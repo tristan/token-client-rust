@@ -15,7 +15,7 @@ mod eth;
 use ::keys::{IdentityKeyPair, PreKeyRecord};
 use rand::{OsRng, Rng};
 
-use rusqlite::{Connection,Transaction};
+use rusqlite::{Connection};
 use docopt::Docopt;
 
 #[derive(Debug, RustcDecodable)]
