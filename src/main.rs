@@ -31,6 +31,8 @@ struct Args {
     cmd_message: bool,
     cmd_review: bool,
     cmd_create: bool,
+    cmd_info: bool,
+    arg_target: String,
     arg_rating: Option<f32>
 }
 
@@ -38,6 +40,7 @@ const USAGE: &'static str = "
 Usage:
   token_client <username> create
   token_client <username> message <recipient> <message>
+  token_client <username> info <target>
   token_client <username> review <recipient> <rating> <message>
 ";
 
@@ -187,5 +190,17 @@ fn main() {
                                  &args.arg_message.as_str())
             .unwrap();
         println!("Review sumbitted!");
+    }
+
+    if args.cmd_info {
+        match services::IdService::new(TOKEN_ID_SERVICE_URL, &user.ethsecretkey)
+            .get_user_by_username(&args.arg_target) {
+                Ok(data) => {
+                    println!("{:#}", data);
+                },
+                Err(e) => {
+                    println!("{:?}", e);
+                }
+            };
     }
 }
