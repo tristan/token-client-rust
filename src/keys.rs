@@ -23,7 +23,7 @@ macro_rules! impl_lower_hex_fmt {
     ($x:ty) => {
         impl std::fmt::LowerHex for $x {
             fn fmt(&self, fmtr: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-                for byte in &self.0 {
+                for byte in self.0.to_vec() {
                     try!(fmtr.write_fmt(format_args!("{:02x}", byte)));
                 }
                 Ok(())

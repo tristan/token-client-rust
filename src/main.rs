@@ -7,10 +7,15 @@ extern crate rusqlite;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate json;
+
 mod LocalStorageProtocol;
 mod curve;
+#[macro_use]
 mod keys;
 mod eth;
+mod services;
 
 use ::keys::{IdentityKeyPair, PreKeyRecord};
 use rand::{OsRng, Rng};
@@ -23,14 +28,19 @@ struct Args {
     arg_username: String,
     arg_recipient: String,
     arg_message: String,
-    cmd_message: bool
+    cmd_message: bool,
+    cmd_review: bool,
+    arg_rating: f32
 }
 
 const USAGE: &'static str = "
 Usage:
   token_client <username>
   token_client <username> message <recipient> <message>
+  token_client <username> review <recipient> <rating> <message>
 ";
+
+const TOKEN_REPUTATION_SERVICE_URL: &'static str = "https://token-rep-service-development.herokuapp.com";
 
 struct User {
     username: String,
@@ -135,5 +145,25 @@ fn main() {
         tx.execute("UPDATE tokenids SET last_pre_key_id = $1 WHERE address = $2",
                    &[&(user.last_pre_key_id + 100), &user.address]).unwrap();
         tx.commit().unwrap();
+    }
+
+    // COMMANDS
+
+    // REVIEW
+
+    if args.cmd_review {
+        if args.arg_rating < 0.0 || args.arg_rating > 5.0 {
+            println!("Invalid rating: must be between 0 and 5\n{}", USAGE);
+            std::process::exit(1);
+        }
+
+        let repservice = services::ReputationService::new(
+            TOKEN_REPUTATION_SERVICE_URL, &user.ethsecretkey);
+
+        repservice.submit_review(&args.arg_recipient.as_str(),
+                                 args.arg_rating,
+                                 &args.arg_message.as_str())
+            .unwrap();
+        println!("Review sumbitted!");
     }
 }

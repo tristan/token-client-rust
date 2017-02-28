@@ -12,16 +12,13 @@ lazy_static! {
 
 pub struct SecretKey([u8;32]);
 pub struct Address([u8;20]);
+pub struct Signature([u8;65]);
 
-impl std::fmt::LowerHex for Address {
-    fn fmt(&self, fmtr: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        try!(fmtr.write_fmt(format_args!("0x")));
-        for byte in &self.0 {
-            try!(fmtr.write_fmt(format_args!("{:02x}", byte)));
-        }
-        Ok(())
-    }
-}
+// TODO: look at replacing these with custom #[derive(...)]
+impl_lower_hex_fmt!(Address);
+impl_lower_hex_fmt!(Signature);
+impl_lower_hex_fmt!(SecretKey);
+impl_to_vec!(Signature);
 
 impl SecretKey {
     pub fn address(&self) -> Address {
@@ -47,13 +44,14 @@ impl SecretKey {
         SecretKey(res)
     }
 
-    pub fn sign(&self, data: &[u8]) -> [u8;65] {
+    pub fn sign(&self, data: &[u8]) -> Signature {
         let sk = secp256k1::key::SecretKey::from_slice(&SECP256K1, &self.0).unwrap();
         let rawhash = {
             let mut hash_output: [u8; 32] = [0; 32];
             let mut sha3 = Keccak::new_keccak256();
             sha3.update(&data);
             sha3.finalize(&mut hash_output);
+	    println!("0x{:x}", SecretKey::deserialize(&hash_output.to_vec()));
             secp256k1::Message::from_slice(&hash_output).unwrap()
         };
         let sig = SECP256K1.sign_recoverable(&rawhash, &sk).unwrap();
@@ -61,7 +59,7 @@ impl SecretKey {
         let mut res = [0u8;65];
         &res[..64].copy_from_slice(&ret);
         res[64] = recid.to_i32() as u8;
-        res
+        Signature(res)
     }
 }
 
@@ -87,7 +85,7 @@ mod tests {
                 let expected_addr = $addr;
                 let sk = SecretKey::deserialize(&sk.to_vec());
                 assert_eq!(format!("{:x}", sk.address()), expected_addr);
-                let sig = sk.sign(msg);
+                let sig = sk.sign(msg).to_vec();
                 assert_eq!(sig[0..32], expected_sig[0..32]);
                 assert_eq!(sig[32..64], expected_sig[32..64]);
                 assert_eq!(sig[64], expected_sig[64]);
