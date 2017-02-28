@@ -30,16 +30,18 @@ struct Args {
     arg_message: String,
     cmd_message: bool,
     cmd_review: bool,
-    arg_rating: f32
+    cmd_create: bool,
+    arg_rating: Option<f32>
 }
 
 const USAGE: &'static str = "
 Usage:
-  token_client <username>
+  token_client <username> create
   token_client <username> message <recipient> <message>
   token_client <username> review <recipient> <rating> <message>
 ";
 
+const TOKEN_ID_SERVICE_URL: &'static str = "https://token-id-service-development.herokuapp.com";
 const TOKEN_REPUTATION_SERVICE_URL: &'static str = "https://token-rep-service-development.herokuapp.com";
 
 struct User {
@@ -57,7 +59,7 @@ fn main() {
     let args: Args = Docopt::new(USAGE)
         .and_then(|d| d.decode())
         .unwrap_or_else(|e| e.exit());
-    println!("{:?}", args);
+    //println!("{:?}", args);
 
     let mut rng = OsRng::new().ok().unwrap();
 
@@ -104,28 +106,47 @@ fn main() {
             }
         });
     let user = match userresult {
-        Ok(user) => user,
+        Ok(user) => {
+            if args.cmd_create {
+                println!("ERROR: User already exists...\n{}", USAGE);
+                std::process::exit(1);
+            }
+            user
+        },
         Err(_) => {
-            println!("Creating new user...");
-            // TODO: generate address
-            let ethsecretkey = eth::generate_secret_key();
-            let address = format!("{:x}", ethsecretkey.address());
-            // TODO: register with id service (to verify username)
-            let me = User {
-                username: args.arg_username,
-                address: address.to_string(),
-                registration_id: rng.gen_range(1, 16381),
-                ethsecretkey: ethsecretkey,
-                identitykeypair: IdentityKeyPair::generate(),
-                last_pre_key_id: 0,
-                last_signed_pre_key_id: 0
-            };
-            con.execute("INSERT INTO tokenids (username, address, registration_id, ethsecretkey, identitykeypair)
+            if args.cmd_create {
+                println!("Creating new user...");
+                // TODO: generate address
+                let ethsecretkey = eth::generate_secret_key();
+                let address = ethsecretkey.address();
+                // TODO: register with id service (to verify username)
+                let me = User {
+                    username: args.arg_username,
+                    address: format!("{:x}", address).to_string(),
+                    registration_id: rng.gen_range(1, 16381),
+                    ethsecretkey: ethsecretkey,
+                    identitykeypair: IdentityKeyPair::generate(),
+                    last_pre_key_id: 0,
+                    last_signed_pre_key_id: 0
+                };
+                match services::IdService::new(TOKEN_ID_SERVICE_URL, &me.ethsecretkey)
+                    .create_user(&me.username, &address) {
+                        Ok(_) => {},
+                        Err(e) => {
+                            println!("Unable to create user: {:?}", e);
+                            std::process::exit(1);
+                        }
+                    }
+                con.execute("INSERT INTO tokenids (username, address, registration_id, ethsecretkey, identitykeypair)
                          VALUES (?1, ?2, ?3, ?4, ?5)",
-                        &[&me.username, &me.address, &me.registration_id,
-                          &me.ethsecretkey.serialize(),
-                          &me.identitykeypair.serialize()]).unwrap();
-            me
+                            &[&me.username, &me.address, &me.registration_id,
+                              &me.ethsecretkey.serialize(),
+                              &me.identitykeypair.serialize()]).unwrap();
+                me
+            } else {
+                println!("Could not find user named\n{}", USAGE);
+                std::process::exit(1);
+            }
         }
     };
 
@@ -152,7 +173,8 @@ fn main() {
     // REVIEW
 
     if args.cmd_review {
-        if args.arg_rating < 0.0 || args.arg_rating > 5.0 {
+        let rating = args.arg_rating.unwrap();
+        if rating < 0.0 || rating > 5.0 {
             println!("Invalid rating: must be between 0 and 5\n{}", USAGE);
             std::process::exit(1);
         }
@@ -161,7 +183,7 @@ fn main() {
             TOKEN_REPUTATION_SERVICE_URL, &user.ethsecretkey);
 
         repservice.submit_review(&args.arg_recipient.as_str(),
-                                 args.arg_rating,
+                                 rating,
                                  &args.arg_message.as_str())
             .unwrap();
         println!("Review sumbitted!");

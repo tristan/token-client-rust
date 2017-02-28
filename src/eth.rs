@@ -51,7 +51,6 @@ impl SecretKey {
             let mut sha3 = Keccak::new_keccak256();
             sha3.update(&data);
             sha3.finalize(&mut hash_output);
-	    println!("0x{:x}", SecretKey::deserialize(&hash_output.to_vec()));
             secp256k1::Message::from_slice(&hash_output).unwrap()
         };
         let sig = SECP256K1.sign_recoverable(&rawhash, &sk).unwrap();
