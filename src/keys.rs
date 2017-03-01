@@ -4,8 +4,7 @@ extern crate time;
 extern crate protobuf;
 
 use LocalStorageProtocol;
-use curve::curve25519_sign;
-
+use curve::{curve25519_sign, curve25519_verify};
 use protobuf::{Message};
 
 use std;
@@ -35,7 +34,7 @@ macro_rules! impl_lower_hex_fmt {
 macro_rules! impl_to_vec {
     ($x:ty) => {
         impl $x {
-            fn to_vec(&self) -> std::vec::Vec<u8> {
+            pub fn to_vec(&self) -> std::vec::Vec<u8> {
                 self.0.to_vec()
             }
         }
@@ -48,13 +47,13 @@ impl_to_vec!(ECPrivateKey);
 impl_to_vec!(ECPublicKey);
 
 impl ECPublicKey {
-    fn serialize(&self) -> Vec<u8> {
+    pub fn serialize(&self) -> Vec<u8> {
         let mut serialized: Vec<u8> = Vec::with_capacity(33);
         serialized.push(0x05);
         serialized.append(&mut self.0.to_vec());
         serialized
     }
-    fn deserialize(vec: &Vec<u8>) -> ECPublicKey {
+    pub fn deserialize(vec: &Vec<u8>) -> ECPublicKey {
         let mut pk = [0u8; 32];
         pk.copy_from_slice(&vec[1..33]);
         ECPublicKey(pk)
@@ -86,6 +85,9 @@ macro_rules! create_keypair_type {
 
                 let mut private_key = [0u8; 32];
                 rng.fill_bytes(&mut private_key);
+                private_key[0] &= 248;
+                private_key[31] &= 127;
+                private_key[31] |= 64;
                 let public_key = curve25519_base(&private_key);
                 $x {
                     private_key: ECPrivateKey(private_key),
@@ -99,19 +101,17 @@ macro_rules! create_keypair_type {
             pub fn get_private_key(&self) -> &ECPrivateKey {
                 &self.private_key
             }
+
+            // curve25519 signature helpers
+            pub fn curve25519_sign(&self, message: &[u8]) -> [u8; 64] {
+                curve25519_sign(&self.private_key.0, &message)
+            }
         }
     }
 }
 
 create_keypair_type!(ECKeyPair);
 create_keypair_type!(IdentityKeyPair);
-
-impl ECKeyPair {
-    // curve25519 signature helpers
-    pub fn curve25519_sign(&self, message: &[u8]) -> [u8; 64] {
-        curve25519_sign(&self.private_key.0, &message)
-    }
-}
 
 impl IdentityKeyPair {
     pub fn serialize(&self) -> Vec<u8> {
@@ -164,12 +164,20 @@ impl PreKeyRecord {
         }
     }
 
+    pub fn generate(start: u32) -> PreKeyRecord {
+        PreKeyRecord::from_keypair(start, &ECKeyPair::generate())
+    }
+
     pub fn generate_prekeys(start: u32, count: u32) -> Vec<PreKeyRecord> {
         let mut vec = Vec::with_capacity(count as usize);
         for i in 0..count {
             vec.push(PreKeyRecord::from_keypair((start + i) % 0xFFFFFE, &ECKeyPair::generate()));
         }
         vec
+    }
+
+    pub fn get_public_key(&self) -> &ECPublicKey {
+        &self.keypair.public_key
     }
 
     pub fn get_id(&self) -> u32 {
@@ -186,10 +194,10 @@ pub struct SignedPreKeyRecord {
 }
 
 impl SignedPreKeyRecord {
-    pub fn generate(identity_keypair: &ECKeyPair, id: u32) -> SignedPreKeyRecord {
+    pub fn generate(identity_keypair: &IdentityKeyPair, id: u32) -> SignedPreKeyRecord {
         // generate public key to sign
         let keypair = ECKeyPair::generate();
-        let signature = identity_keypair.curve25519_sign(&keypair.public_key.0);
+        let signature = identity_keypair.curve25519_sign(&keypair.public_key.serialize());
         let timespec = time::get_time();
         let mills: u64 = timespec.sec as u64 + timespec.nsec as u64 / 1000 / 1000;
         SignedPreKeyRecord {
@@ -224,6 +232,18 @@ impl SignedPreKeyRecord {
                 private_key: ECPrivateKey::deserialize(&structure.take_privateKey())
             }
         }
+    }
+
+    pub fn get_id(&self) -> u32 {
+        self.id
+    }
+
+    pub fn get_public_key(&self) -> &ECPublicKey {
+        &self.keypair.public_key
+    }
+
+    pub fn get_signature(&self) -> &[u8;64] {
+        &self.signature
     }
 }
 
@@ -287,7 +307,7 @@ mod tests {
 
     #[test]
     fn generate_signed_pre_key_record() {
-        SignedPreKeyRecord::generate(&ECKeyPair::generate(), 0);
+        SignedPreKeyRecord::generate(&IdentityKeyPair::generate(), 0);
     }
 
     #[test]
@@ -328,6 +348,16 @@ mod tests {
         assert!(record.timestamp == timestamp);
         assert!(record.signature[0..32] == sig[0..32]);
         assert!(record.signature[32..64] == sig[32..64]);
+    }
+
+    #[test]
+    fn test_signed_pre_key_valid() {
+        let idkp = IdentityKeyPair::generate();
+        let spkr = SignedPreKeyRecord::generate(&idkp, 0);
+        assert!(curve25519_verify(
+            &idkp.public_key.0,
+            &spkr.get_public_key().serialize(),
+            &spkr.signature) == true);
     }
 
     #[test]

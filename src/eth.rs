@@ -83,7 +83,7 @@ mod tests {
                 let expected_sig: [u8; 65] = $sig;
                 let expected_addr = $addr;
                 let sk = SecretKey::deserialize(&sk.to_vec());
-                assert_eq!(format!("{:x}", sk.address()), expected_addr);
+                assert_eq!(format!("0x{:x}", sk.address()), expected_addr);
                 let sig = sk.sign(msg).to_vec();
                 assert_eq!(sig[0..32], expected_sig[0..32]);
                 assert_eq!(sig[32..64], expected_sig[32..64]);
