@@ -3,7 +3,7 @@ extern crate crypto;
 extern crate time;
 extern crate protobuf;
 
-use LocalStorageProtocol;
+use signal::LocalStorageProtocol;
 use curve::{curve25519_sign, curve25519_verify};
 use protobuf::{Message};
 
@@ -13,9 +13,9 @@ use self::rand::{OsRng, Rng};
 
 // Identity keys
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct ECPrivateKey([u8;32]);
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct ECPublicKey([u8;32]);
 
 macro_rules! impl_lower_hex_fmt {

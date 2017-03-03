@@ -11,12 +11,12 @@ extern crate lazy_static;
 #[macro_use]
 extern crate json;
 
-mod LocalStorageProtocol;
 mod curve;
 #[macro_use]
 mod keys;
 mod eth;
 mod services;
+mod signal;
 
 use ::keys::{IdentityKeyPair, PreKeyRecord, SignedPreKeyRecord};
 use rand::{OsRng, Rng};
