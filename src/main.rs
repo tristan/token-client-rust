@@ -17,6 +17,7 @@ mod keys;
 mod eth;
 mod services;
 mod signal;
+mod storage;
 
 use ::keys::{IdentityKeyPair, PreKeyRecord, SignedPreKeyRecord};
 use rand::{OsRng, Rng};
@@ -34,6 +35,8 @@ struct Args {
     cmd_create: bool,
     cmd_info: bool,
     cmd_messages: bool,
+    cmd_debug: bool,
+    cmd_dump: bool,
     arg_target: String,
     arg_rating: Option<f32>
 }
@@ -45,6 +48,7 @@ Usage:
   token_client <username> messages
   token_client <username> info <target>
   token_client <username> review <recipient> <rating> <message>
+  token_client <username> debug dump
 ";
 
 const TOKEN_ID_SERVICE_URL: &'static str = "https://token-id-service-development.herokuapp.com";
@@ -285,6 +289,26 @@ fn main() {
             Err(e) => {
                 println!("{:?}", e);
             }
+        }
+    }
+
+    if args.cmd_debug && args.cmd_dump {
+        println!("{}", user.address);
+        println!("{}", user.registration_id);
+        //println!("identity_keypair: {:?}", user.identitykeypair.serialize());
+        //println!("signed_pre_keypair: {:?}", user.signed_prekey.serialize());
+        let mut stmt = con.prepare(
+            "SELECT key_id, keypair FROM signal_pre_keys WHERE address = $1 ORDER BY key_id ASC LIMIT 10"
+        ).unwrap();
+        let rows = stmt.query_map(&[&user.address], |row| {
+            let id: u32 = row.get(0);
+            let keypair: Vec<u8> = row.get(1);
+            (id, keypair)
+        }).unwrap();
+        for result in rows {
+            let (id, keypair) = result.unwrap();
+            println!("let pre_key = PreKeyRecord::deserialize(\n&vec!{:?});", keypair);
+            println!("store.store_pre_key({}, &pre_key);", id);
         }
     }
 }
