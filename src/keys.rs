@@ -113,7 +113,7 @@ macro_rules! create_keypair_type {
             }
 
             // curve25519 signature helpers
-            pub fn curve25519_sign(&self, message: &[u8]) -> [u8; 64] {
+            pub fn sign(&self, message: &[u8]) -> [u8; 64] {
                 curve25519_sign(&self.private_key.0, &message)
             }
         }
@@ -140,6 +140,7 @@ impl IdentityKeyPair {
         }
     }
 }
+
 // Prekeys
 #[derive(Copy, Clone)]
 pub struct PreKeyRecord {
@@ -220,7 +221,7 @@ impl SignedPreKeyRecord {
     pub fn generate(identity_keypair: &IdentityKeyPair, id: u32) -> SignedPreKeyRecord {
         // generate public key to sign
         let keypair = ECKeyPair::generate();
-        let signature = identity_keypair.curve25519_sign(&keypair.public_key.serialize());
+        let signature = identity_keypair.sign(&keypair.public_key.serialize());
         let timespec = time::get_time();
         let mills: u64 = timespec.sec as u64 + timespec.nsec as u64 / 1000 / 1000;
         SignedPreKeyRecord {
