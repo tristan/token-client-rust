@@ -57,6 +57,9 @@ impl ECPublicKey {
         pk.copy_from_slice(&vec[1..33]);
         ECPublicKey(pk)
     }
+    pub fn as_slice(&self) -> &[u8;32] {
+        &self.0
+    }
 }
 
 impl ECPrivateKey {
@@ -83,6 +86,15 @@ macro_rules! create_keypair_type {
         }
 
         impl $x {
+
+            #[cfg(test)]
+            pub fn new(private: &Vec<u8>, public: &Vec<u8>) -> $x {
+                $x {
+                    private_key: ECPrivateKey::deserialize(private),
+                    public_key: ECPublicKey::deserialize(public)
+                }
+            }
+            
             pub fn generate() -> $x {
                 let mut rng = OsRng::new().ok().unwrap();
 
@@ -149,7 +161,7 @@ pub struct PreKeyRecord {
 }
 
 impl PreKeyRecord {
-    fn from_keypair(id: u32, keypair: &ECKeyPair) -> PreKeyRecord {
+    pub fn new(id: u32, keypair: &ECKeyPair) -> PreKeyRecord {
         PreKeyRecord {
             id: id,
             keypair: keypair.clone()
@@ -177,13 +189,13 @@ impl PreKeyRecord {
     }
 
     pub fn generate(start: u32) -> PreKeyRecord {
-        PreKeyRecord::from_keypair(start, &ECKeyPair::generate())
+        PreKeyRecord::new(start, &ECKeyPair::generate())
     }
 
     pub fn generate_prekeys(start: u32, count: u32) -> Vec<PreKeyRecord> {
         let mut vec = Vec::with_capacity(count as usize);
         for i in 0..count {
-            vec.push(PreKeyRecord::from_keypair((start + i) % 0xFFFFFE, &ECKeyPair::generate()));
+            vec.push(PreKeyRecord::new((start + i) % 0xFFFFFE, &ECKeyPair::generate()));
         }
         vec
     }
@@ -218,7 +230,7 @@ impl Clone for SignedPreKeyRecord {
 }
 
 impl SignedPreKeyRecord {
-    pub fn generate(identity_keypair: &IdentityKeyPair, id: u32) -> SignedPreKeyRecord {
+    pub fn generate(id: u32, identity_keypair: &IdentityKeyPair) -> SignedPreKeyRecord {
         // generate public key to sign
         let keypair = ECKeyPair::generate();
         let signature = identity_keypair.sign(&keypair.public_key.serialize());
@@ -325,7 +337,7 @@ mod tests {
 
         let keypair = ECKeyPair { private_key: ECPrivateKey::deserialize(&sk),
                                   public_key: ECPublicKey::deserialize(&pk) };
-        let record = PreKeyRecord::from_keypair(id, &keypair);
+        let record = PreKeyRecord::new(id, &keypair);
         assert!(record.serialize() == serialisation);
         let record = PreKeyRecord::deserialize(&serialisation);
         assert!(record.keypair.private_key.to_vec() == sk);
@@ -335,7 +347,7 @@ mod tests {
 
     #[test]
     fn generate_signed_pre_key_record() {
-        SignedPreKeyRecord::generate(&IdentityKeyPair::generate(), 0);
+        SignedPreKeyRecord::generate(0, &IdentityKeyPair::generate());
     }
 
     #[test]
@@ -381,7 +393,7 @@ mod tests {
     #[test]
     fn test_signed_pre_key_valid() {
         let idkp = IdentityKeyPair::generate();
-        let spkr = SignedPreKeyRecord::generate(&idkp, 0);
+        let spkr = SignedPreKeyRecord::generate(0, &idkp);
         assert!(curve25519_verify(
             &idkp.public_key.0,
             &spkr.get_public_key().serialize(),

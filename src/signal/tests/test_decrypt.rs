@@ -5,7 +5,7 @@ use ::keys::{IdentityKeyPair,SignedPreKeyRecord,PreKeyRecord};
 
 use ::signal::message::PreKeySignalMessage;
 use ::signal::protocol::SignalProtocolAddress;
-use ::signal::session::SessionCipher;
+use ::signal::session::decrypt_prekey_message;
 use ::signal::protocol::{SignedPreKeyStore,PreKeyStore};
 
 #[test]
@@ -249,8 +249,6 @@ fn decrypt_message() {
         243, 249, 66, 206, 60, 113, 125, 121]);
     store.store_pre_key(91, &pre_key);
 
-
-    let mut session_cipher = SessionCipher::new(&mut store, &remote_address);
-    let plaintext = session_cipher.decrypt(&prekeymsg).unwrap();
+    let plaintext = decrypt_prekey_message(&mut store, &remote_address, &prekeymsg).unwrap();
     assert_eq!(plaintext, expected_plaintext);
 }

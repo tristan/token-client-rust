@@ -8,19 +8,12 @@ use super::WhisperTextProtocol;
 use self::crypto::mac::Mac;
 use self::crypto::hmac::Hmac;
 use self::crypto::sha2::Sha256;
-
-pub struct SignalMessage {
-    version: u32,
-    sender_ratchet_key: ECPublicKey,
-    counter: u32,
-    previous_counter: u32,
-    ciphertext: Vec<u8>,
-    mac: Vec<u8>
-}
+use std::any::Any;
 
 const MAC_LENGTH: usize = 8;
 
-enum MessageTypes {
+#[derive(Debug,PartialEq)]
+pub enum MessageType {
     WHISPER = 2,
     PREKEY,
     SENDERKEY,
@@ -41,7 +34,57 @@ fn ints_to_byte_high_and_low(high: u32, low: u32) -> u8 {
     ((high << 4 | low) & 0xFF) as u8
 }
 
+pub struct SignalMessage {
+    version: u32,
+    sender_ratchet_key: ECPublicKey,
+    counter: u32,
+    previous_counter: u32,
+    ciphertext: Vec<u8>,
+    mac: Vec<u8>
+}
+
+pub trait CipherTextMessage {
+    fn get_type(&self) -> MessageType;
+    fn as_any(&self) -> &Any; // TODO: is this a good idea? (read https://github.com/chris-morgan/mopa)
+}
+
+impl CipherTextMessage for SignalMessage {
+    fn get_type(&self) -> MessageType {
+        MessageType::WHISPER
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+
 impl SignalMessage {
+
+    pub fn new(message_version: u32, mac_key: &Vec<u8>,
+               sender_ratchet_key: &ECPublicKey, counter: u32,
+               previous_counter: u32, ciphertext: &Vec<u8>,
+               sender_identity_key: &ECPublicKey,
+               receiver_identity_key: &ECPublicKey) -> SignalMessage {
+        // TODO: merge this with serialize fn
+        let mut serialized: Vec<u8> = vec![ints_to_byte_high_and_low(
+            message_version, CURRENT_VERSION)];
+        let mut message = WhisperTextProtocol::SignalMessage::new();
+        message.set_ratchetKey(sender_ratchet_key.serialize());
+        message.set_counter(counter);
+        message.set_previousCounter(previous_counter);
+        message.set_ciphertext(ciphertext.clone());
+        serialized.extend(message.write_to_bytes().unwrap());
+        SignalMessage {
+            version: message_version,
+            sender_ratchet_key: sender_ratchet_key.clone(),
+            counter: counter,
+            previous_counter: previous_counter,
+            ciphertext: ciphertext.clone(),
+            mac: SignalMessage::get_mac(message_version, sender_identity_key,
+                                        receiver_identity_key, mac_key,
+                                        &serialized)
+        }
+    }
+
     pub fn deserialize(serialized: &Vec<u8>) -> Result<SignalMessage, String> {
 
         let version = high_bits_to_int(serialized[0]);
@@ -88,13 +131,14 @@ impl SignalMessage {
                       receiver_identity_key: &ECPublicKey, mac_key: &Vec<u8>) -> bool {
         let serialized = self.serialize();
         let (message, their_mac) = serialized.split_at(serialized.len() - 8);
-        let our_mac = self.get_mac(message_version, sender_identity_key,
-                                   receiver_identity_key, mac_key,
-                                   &message.to_vec());
+        let our_mac = SignalMessage::get_mac(
+            message_version, sender_identity_key,
+            receiver_identity_key, mac_key,
+            &message.to_vec());
         our_mac == their_mac
     }
 
-    pub fn get_mac(&self, message_version: u32, sender_identity_key: &ECPublicKey,
+    pub fn get_mac(message_version: u32, sender_identity_key: &ECPublicKey,
                    receiver_identity_key: &ECPublicKey, mac_key: &Vec<u8>,
                    serialized: &Vec<u8>) -> Vec<u8> {
         let mut mac = Hmac::new(Sha256::new(), mac_key);
@@ -133,7 +177,34 @@ pub struct PreKeySignalMessage {
     message: SignalMessage
 }
 
+impl CipherTextMessage for PreKeySignalMessage {
+    fn get_type(&self) -> MessageType {
+        MessageType::PREKEY
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }    
+}
+
 impl PreKeySignalMessage {
+
+    pub fn new(version: u32,
+               registration_id: u32,
+               pre_key_id: Option<u32>,
+               signed_pre_key_id: Option<u32>, // TODO: this probably doesn't need to be an option
+               base_key: &ECPublicKey,
+               identity_key: &ECPublicKey,
+               message: SignalMessage) -> PreKeySignalMessage {
+        PreKeySignalMessage {
+            version: version,
+            registration_id: registration_id,
+            pre_key_id: pre_key_id,
+            signed_pre_key_id: signed_pre_key_id,
+            base_key: base_key.clone(),
+            identity_key: identity_key.clone(),
+            message: message
+        }
+    }
 
     pub fn deserialize(serialized: &Vec<u8>) -> Result<PreKeySignalMessage, String> {
 
@@ -165,11 +236,34 @@ impl PreKeySignalMessage {
             version: version,
             registration_id: prekeywhispermessage.get_registrationId(),
             pre_key_id: if prekeywhispermessage.has_preKeyId() { Some(prekeywhispermessage.get_preKeyId()) } else { None },
-            signed_pre_key_id: if prekeywhispermessage.has_signedPreKeyId() { Some(prekeywhispermessage.get_signedPreKeyId()) } else { None },
+            signed_pre_key_id: if prekeywhispermessage.has_signedPreKeyId() {
+                Some(prekeywhispermessage.get_signedPreKeyId())
+            } else {
+                None
+            },
             base_key: ECPublicKey::deserialize(&prekeywhispermessage.get_baseKey().to_vec()),
             identity_key: ECPublicKey::deserialize(&prekeywhispermessage.get_identityKey().to_vec()),
             message: message
         })
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut serialized: Vec<u8> = vec![ints_to_byte_high_and_low(self.version, CURRENT_VERSION)];
+        let mut message = WhisperTextProtocol::PreKeySignalMessage::new();
+        match self.signed_pre_key_id {
+            Some(id) => message.set_signedPreKeyId(id),
+            None => panic!("shouldn't happen") // TODO
+        };
+        message.set_baseKey(self.base_key.serialize());
+        message.set_identityKey(self.identity_key.serialize());
+        message.set_message(self.message.serialize());
+        message.set_registrationId(self.registration_id);
+        match self.pre_key_id {
+            Some(id) => message.set_preKeyId(id),
+            None => {}
+        };
+        serialized.extend(message.write_to_bytes().unwrap());
+        serialized
     }
 
     pub fn get_identity_key(&self) -> &ECPublicKey {

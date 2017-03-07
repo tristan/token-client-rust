@@ -11,7 +11,9 @@ pub enum SignalError {
     MessageVersionMismatch,
     DuplicateMessage,
     InvalidMessage,
-    BadMac
+    BadMac,
+    InvalidKey,
+    NoSession
 }
 
 impl fmt::Debug for SignalError {
@@ -24,7 +26,9 @@ impl fmt::Debug for SignalError {
             SignalError::MessageVersionMismatch => "Message Version Mismatch",
             SignalError::DuplicateMessage => "Duplicate Message",
             SignalError::InvalidMessage => "Invalid Message",
-            SignalError::BadMac => "Bad Mac!"
+            SignalError::BadMac => "Bad Mac!",
+            SignalError::InvalidKey => "Invalid Key",
+            SignalError::NoSession => "No Session for given address"
         };
         write!(f, "Signal Error: {}", msg)
     }

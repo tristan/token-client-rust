@@ -164,7 +164,7 @@ fn main() {
                     ethsecretkey: ethsecretkey,
                     password: pass,
                     identitykeypair: identitykeypair,
-                    signed_prekey: SignedPreKeyRecord::generate(&identitykeypair, 0),
+                    signed_prekey: SignedPreKeyRecord::generate(0, &identitykeypair),
                     last_pre_key_id: 100,
                     signaling_key: signaling_key,
                     device_id: 1,
