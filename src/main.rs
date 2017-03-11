@@ -11,15 +11,13 @@ extern crate lazy_static;
 #[macro_use]
 extern crate json;
 
-mod curve;
-#[macro_use]
-mod keys;
 mod eth;
 mod services;
 mod signal;
 mod storage;
 
-use ::keys::{IdentityKeyPair, PreKeyRecord, SignedPreKeyRecord};
+use signal::keys::{IdentityKeyPair};
+use signal::state::{PreKeyRecord, SignedPreKeyRecord};
 use rand::{OsRng, Rng};
 
 use rusqlite::{Connection, Error as SQLiteError};

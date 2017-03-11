@@ -4,7 +4,7 @@ use super::message::{CURRENT_VERSION, CipherTextMessage,
                      SignalMessage, PreKeySignalMessage};
 use super::protocol::SignalError;
 use super::cipher;
-use ::keys::{IdentityKeyPair, ECKeyPair, ECPrivateKey, ECPublicKey};
+use super::keys::{IdentityKeyPair, ECKeyPair, ECPrivateKey, ECPublicKey};
 use super::LocalStorageProtocol;
 use ::protobuf::{Message, RepeatedField};
 use std::collections::LinkedList;

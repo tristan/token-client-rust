@@ -1,7 +1,8 @@
 
 use super::test_protocol_store::TestProtocolStore;
 
-use ::keys::{IdentityKeyPair,SignedPreKeyRecord,PreKeyRecord};
+use ::signal::keys::{IdentityKeyPair};
+use ::signal::state::{PreKeyRecord, SignedPreKeyRecord};
 
 use ::signal::message::PreKeySignalMessage;
 use ::signal::protocol::SignalProtocolAddress;

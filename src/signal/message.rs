@@ -3,7 +3,7 @@ extern crate crypto;
 
 use rustc_serialize::base64::{ToBase64, FromBase64, STANDARD};
 use protobuf::{Message as ProtoBufMessage};
-use ::keys::{ECPublicKey};
+use super::keys::{ECPublicKey};
 use super::WhisperTextProtocol;
 use self::crypto::mac::Mac;
 use self::crypto::hmac::Hmac;
@@ -183,7 +183,7 @@ impl CipherTextMessage for PreKeySignalMessage {
     }
     fn as_any(&self) -> &Any {
         self
-    }    
+    }
 }
 
 impl PreKeySignalMessage {

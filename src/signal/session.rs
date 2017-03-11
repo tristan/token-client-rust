@@ -2,8 +2,8 @@ use super::protocol::{SignalProtocolAddress, SignalProtocolStore, SignalError};
 use super::message::{CipherTextMessage,SignalMessage,PreKeySignalMessage};
 use super::state::{PreKeyBundle};
 use super::ratchet::{SessionRecord, SessionState};
-use ::keys::{ECKeyPair, ECPublicKey};
-use curve::{curve25519_sign, curve25519_verify};
+use super::keys::{ECKeyPair, ECPublicKey};
+use super::curve::{curve25519_sign, curve25519_verify};
 use super::LocalStorageProtocol::SessionStructure;
 
 fn process_prekey_message(store: &mut SignalProtocolStore, remote_address: &SignalProtocolAddress,

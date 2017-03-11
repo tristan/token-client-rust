@@ -10,6 +10,30 @@ lazy_static! {
 	static ref SECP256K1: secp256k1::Secp256k1 = secp256k1::Secp256k1::new();
 }
 
+// TODO: remove duplicate macros
+macro_rules! impl_lower_hex_fmt {
+    ($x:ty) => {
+        impl std::fmt::LowerHex for $x {
+            fn fmt(&self, fmtr: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+                for byte in self.0.to_vec() {
+                    try!(fmtr.write_fmt(format_args!("{:02x}", byte)));
+                }
+                Ok(())
+            }
+        }
+    };
+}
+
+macro_rules! impl_to_vec {
+    ($x:ty) => {
+        impl $x {
+            pub fn to_vec(&self) -> std::vec::Vec<u8> {
+                self.0.to_vec()
+            }
+        }
+    };
+}
+
 pub struct SecretKey([u8;32]);
 pub struct Address([u8;20]);
 pub struct Signature([u8;65]);

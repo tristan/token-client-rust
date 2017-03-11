@@ -1,11 +1,11 @@
 use super::test_protocol_store::TestProtocolStore;
 
-use ::keys::{IdentityKeyPair,ECKeyPair,SignedPreKeyRecord,PreKeyRecord};
+use ::signal::keys::{IdentityKeyPair,ECKeyPair};
+use ::signal::state::{PreKeyRecord,SignedPreKeyRecord,PreKeyBundle};
 
 use ::signal::message::{CipherTextMessage,MessageType,PreKeySignalMessage,SignalMessage};
 use ::signal::protocol::SignalProtocolAddress;
 use ::signal::session;
-use ::signal::state::PreKeyBundle;
 use ::signal::protocol::{SessionStore,SignedPreKeyStore,PreKeyStore,IdentityKeyStore};
 
 use rand::{OsRng, Rng};

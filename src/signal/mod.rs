@@ -1,4 +1,6 @@
 
+pub mod curve;
+pub mod keys;
 pub mod session;
 pub mod message;
 pub mod protocol;

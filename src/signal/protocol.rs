@@ -1,4 +1,5 @@
-use ::keys::{IdentityKeyPair,ECPublicKey,SignedPreKeyRecord,PreKeyRecord};
+use ::signal::keys::{IdentityKeyPair,ECPublicKey};
+use ::signal::state::{PreKeyRecord, SignedPreKeyRecord};
 use super::ratchet::{SessionState, SessionRecord};
 use std::cmp::Eq;
 use std::fmt;
@@ -101,7 +102,7 @@ pub trait SignalProtocolStore : IdentityKeyStore + PreKeyStore + SessionStore + 
 mod tests {
 
     use super::*;
-    use ::keys::IdentityKeyPair;
+    use ::signal::keys::IdentityKeyPair;
 
     #[test]
     fn test_identity_store_trait() {

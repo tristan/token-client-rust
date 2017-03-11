@@ -4,8 +4,9 @@ extern crate curl;
 extern crate tiny_keccak;
 
 use self::rustc_serialize::base64::{ToBase64, STANDARD};
-use super::eth::{Address,SecretKey};
-use super::keys::{IdentityKeyPair,PreKeyRecord,SignedPreKeyRecord};
+use ::eth::{Address,SecretKey};
+use ::signal::keys::{IdentityKeyPair};
+use ::signal::state::{PreKeyRecord, SignedPreKeyRecord};
 use self::curl::easy::{Easy, List};
 use json::JsonValue;
 use json;

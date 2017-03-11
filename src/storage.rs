@@ -1,6 +1,6 @@
 use super::rusqlite::{Connection, Error, ErrorCode};
 use signal::protocol::{SignalProtocolAddress, IdentityKeyStore};
-use ::keys::{ECPublicKey,IdentityKeyPair};
+use signal::keys::{ECPublicKey,IdentityKeyPair};
 
 struct SQLiteStore {
     database: &'static str
@@ -92,7 +92,7 @@ mod tests {
     use std::fs::remove_file;
 
     use super::*;
-    use ::keys::IdentityKeyPair;
+    use signal::keys::IdentityKeyPair;
 
     #[test]
     fn test_identity_store_trait() {
