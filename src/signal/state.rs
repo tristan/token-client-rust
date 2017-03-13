@@ -46,6 +46,10 @@ impl PreKeyBundle {
         self.registration_id
     }
 
+    pub fn get_device_id(&self) -> u32 {
+        self.device_id
+    }
+
     pub fn get_prekey_id(&self) -> Option<u32> {
         self.prekey_id
     }

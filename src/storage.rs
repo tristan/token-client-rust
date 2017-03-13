@@ -1,8 +1,11 @@
 use super::rusqlite::{Connection, Error, ErrorCode};
-use signal::protocol::{SignalProtocolAddress, IdentityKeyStore};
+use signal::protocol::{SignalProtocolAddress,SignalProtocolStore,IdentityKeyStore,
+                       SessionStore,PreKeyStore,SignedPreKeyStore};
+use signal::state::{PreKeyRecord,SignedPreKeyRecord};
+use signal::ratchet::{SessionRecord};
 use signal::keys::{ECPublicKey,IdentityKeyPair};
 
-struct SQLiteStore {
+pub struct SQLiteStore {
     database: &'static str
 }
 
@@ -83,6 +86,63 @@ impl IdentityKeyStore for SQLiteStore {
         }
     }
 
+}
+
+impl PreKeyStore for SQLiteStore {
+    fn load_pre_key(&self, pre_key_id: u32) -> Option<PreKeyRecord> {
+        // match self.prekey_hash_map.get(&pre_key_id) {
+        //     Some(record) => Some(record.clone()),
+        //     None => None
+        // }
+        None
+    }
+    fn store_pre_key(&mut self, pre_key_id: u32, record: &PreKeyRecord) {
+        //self.prekey_hash_map.insert(pre_key_id, record.clone());
+    }
+
+    fn contains_pre_key(&self, pre_key_id: u32) -> bool {
+        //self.prekey_hash_map.contains_key(&pre_key_id)
+        false
+    }
+    fn remove_pre_key(&mut self, pre_key_id: u32) {
+        //self.prekey_hash_map.remove(&pre_key_id);
+    }
+}
+
+impl SessionStore for SQLiteStore {
+    fn load_session(&self, address: &SignalProtocolAddress) -> SessionRecord {
+        // match self.session_hash_map.get(&address) {
+        //     Some(record) => record.clone(),
+        //     None => SessionRecord::new()
+        // }
+        SessionRecord::new()
+    }
+    fn store_session(&mut self, address: &SignalProtocolAddress, record: &SessionRecord) {
+        //self.session_hash_map.insert(address.clone(), record.clone());
+    }
+    fn contains_session(&self, address: &SignalProtocolAddress) -> bool {
+        //self.session_hash_map.contains_key(&address)
+        false
+    }
+    fn delete_session(&mut self, address: &SignalProtocolAddress) {
+        //self.session_hash_map.remove(&address);
+    }
+}
+
+impl SignedPreKeyStore for SQLiteStore {
+    fn load_signed_pre_key(&self, id: u32) -> Option<SignedPreKeyRecord> {
+        // match self.signed_pre_key_store.get(&id) {
+        //     Some(record) => Some(record.clone()),
+        //     None => None
+        // }
+        None
+    }
+    fn store_signed_pre_key(&mut self, id: u32, record: &SignedPreKeyRecord) {
+        //self.signed_pre_key_store.insert(id, record.clone());
+    }
+}
+
+impl SignalProtocolStore for SQLiteStore {
 }
 
 

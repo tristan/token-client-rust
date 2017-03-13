@@ -518,6 +518,7 @@ impl SessionState {
     }
 }
 
+// TODO: move this to state.rs
 #[derive(Clone)]
 pub struct SessionRecord {
     state: SessionState,

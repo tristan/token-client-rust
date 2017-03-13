@@ -12,13 +12,14 @@ extern crate lazy_static;
 extern crate json;
 
 mod eth;
-mod services;
+mod service;
 mod signal;
 mod storage;
 
 use signal::keys::{IdentityKeyPair};
 use signal::state::{PreKeyRecord, SignedPreKeyRecord};
 use rand::{OsRng, Rng};
+use storage::SQLiteStore;
 
 use rusqlite::{Connection, Error as SQLiteError};
 use docopt::Docopt;
@@ -168,7 +169,7 @@ fn main() {
                     device_id: 1,
                     last_signed_pre_key_id: 0
                 };
-                match services::IdService::new(TOKEN_ID_SERVICE_URL, &me.ethsecretkey)
+                match service::id::IdService::new(TOKEN_ID_SERVICE_URL, &me.ethsecretkey)
                     .create_user(&me.username, &address) {
                         Ok(_) => {},
                         Err(e) => {
@@ -181,7 +182,10 @@ fn main() {
                 // TODO: this seems to be what the java client always sets, figure out why
                 let last_resort_key = PreKeyRecord::generate(16777215);
 
-                match services::ChatService::new(TOKEN_CHAT_SERVICE_URL, &me.ethsecretkey, &me.address, &me.password)
+                match service::chat::ChatService::new(
+                    &mut SQLiteStore::new("token.db"),
+                    TOKEN_CHAT_SERVICE_URL, &me.ethsecretkey,
+                    &me.address, &me.password)
                     .bootstrap_account(&me.identitykeypair,
                                        &last_resort_key,
                                        &pre_keys,
@@ -255,7 +259,7 @@ fn main() {
             std::process::exit(1);
         }
 
-        let repservice = services::ReputationService::new(
+        let repservice = service::rep::ReputationService::new(
             TOKEN_REPUTATION_SERVICE_URL, &user.ethsecretkey);
 
         repservice.submit_review(&args.arg_recipient.as_str(),
@@ -266,7 +270,7 @@ fn main() {
     }
 
     if args.cmd_info {
-        match services::IdService::new(TOKEN_ID_SERVICE_URL, &user.ethsecretkey)
+        match service::id::IdService::new(TOKEN_ID_SERVICE_URL, &user.ethsecretkey)
             .get_user_by_username(&args.arg_target) {
                 Ok(data) => {
                     println!("{:#}", data);
@@ -278,7 +282,11 @@ fn main() {
     }
 
     if args.cmd_messages {
-        let cs = services::ChatService::new(TOKEN_CHAT_SERVICE_URL, &user.ethsecretkey, &user.address, &user.password);
+        let mut store = SQLiteStore::new("token.db");
+        let cs = service::chat::ChatService::new(
+            &mut store,
+            TOKEN_CHAT_SERVICE_URL, &user.ethsecretkey,
+            &user.address, &user.password);
         let result = cs.get_messages();
         match result {
             Ok(data) => {

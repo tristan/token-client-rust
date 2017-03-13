@@ -44,6 +44,12 @@ impl_lower_hex_fmt!(Signature);
 impl_lower_hex_fmt!(SecretKey);
 impl_to_vec!(Signature);
 
+impl Address {
+    pub fn to_string(&self) -> String {
+        format!("0x{:x}", &self)
+    }
+}
+
 impl SecretKey {
     pub fn address(&self) -> Address {
         let mut sha3 = Keccak::new_keccak256();

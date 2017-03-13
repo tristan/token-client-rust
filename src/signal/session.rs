@@ -69,9 +69,9 @@ fn process_prekey_message(store: &mut SignalProtocolStore, remote_address: &Sign
     unsigned_pre_key_id
 }
 
-pub fn process_prekey_bundle(store: &mut SignalProtocolStore,
-                             remote_address: &SignalProtocolAddress,
-                             prekey: &PreKeyBundle)
+pub fn process_prekey_bundle<'a>(store: &'a mut SignalProtocolStore,
+                                 remote_address: &'a SignalProtocolAddress,
+                                 prekey: &'a PreKeyBundle)
                              -> Result<(), SignalError> {
     if ! store.is_trusted_identity(remote_address, prekey.get_identity_key()) {
         return Err(SignalError::UntrustedIdentity);

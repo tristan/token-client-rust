@@ -1,6 +1,7 @@
-use ::signal::keys::{IdentityKeyPair,ECPublicKey};
-use ::signal::state::{PreKeyRecord, SignedPreKeyRecord};
-use super::ratchet::{SessionState, SessionRecord};
+use super::keys::{IdentityKeyPair,ECPublicKey,ECKeyPair};
+use super::state::{PreKeyBundle,PreKeyRecord,SignedPreKeyRecord};
+use super::ratchet::{SessionState,SessionRecord};
+use super::curve::{curve25519_sign, curve25519_verify};
 use std::cmp::Eq;
 use std::fmt;
 
@@ -96,6 +97,48 @@ pub trait SignedPreKeyStore {
 }
 
 pub trait SignalProtocolStore : IdentityKeyStore + PreKeyStore + SessionStore + SignedPreKeyStore {
+
+    fn process_prekey_bundle(&mut self,
+                             remote_address: &SignalProtocolAddress,
+                             prekey: &PreKeyBundle)
+                             -> Result<(), SignalError> {
+        if ! self.is_trusted_identity(remote_address, prekey.get_identity_key()) {
+            return Err(SignalError::UntrustedIdentity);
+        }
+
+        if ! curve25519_verify(prekey.get_identity_key().as_slice(),
+                               &prekey.get_signed_prekey().serialize(),
+                               &prekey.get_signed_prekey_signature_as_slice()) {
+            return Err(SignalError::InvalidKey);
+        }
+
+        let mut session_record = self.load_session(remote_address);
+        let our_base_key = ECKeyPair::generate();
+        let their_signed_prekey = prekey.get_signed_prekey();
+
+        let mut session = SessionState::new();
+        session.initialize_as_alice(
+            &self.get_identity_key_pair(),
+            &our_base_key,
+            prekey.get_identity_key(),
+            &their_signed_prekey,
+            &their_signed_prekey,
+            prekey.get_prekey()
+        );
+
+        session.set_unacknowledged_prekey_message(prekey.get_prekey_id(), prekey.get_signed_prekey_id(), our_base_key.get_public_key());
+        session.set_local_registration_id(self.get_local_registration_id());
+        session.set_remote_registration_id(prekey.get_registration_id());
+        session.set_alice_base_key(our_base_key.get_public_key().serialize().to_vec());
+
+        session_record.push_state(session);
+
+        self.store_session(remote_address, &session_record);
+        self.store_identity(remote_address, prekey.get_identity_key());
+
+        Ok(())
+    }
+
 }
 
 #[cfg(test)]
