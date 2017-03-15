@@ -4,7 +4,6 @@ use ::eth::{Address,SecretKey};
 use ::signal::protocol::{SignalProtocolAddress, SignalProtocolStore, SignalError};
 use ::signal::state::PreKeyBundle;
 use ::signal::keys::ECPublicKey;
-use ::signal::session::process_prekey_bundle;
 use super::base64::STANDARD_NO_PADDING;
 use ::rustc_serialize::base64::{FromBase64};
 use json;
@@ -20,16 +19,23 @@ impl<'a> ChatService<'a> {
 
     fn get_encrypted_message(&'a mut self, address: &Address, device_id: u32, plaintext: &Vec<u8>) {
 
+        //self.store
+
         match self.get_pre_keys(address, device_id) {
             Ok(bundles) => {
                 for bundle in bundles.iter() {
                     let remote_addr = SignalProtocolAddress::new(address.to_string(), bundle.get_device_id());
                     //process_prekey_bundle(&mut self.store, &remote_addr, &bundle);
-                    self.store.process_prekey_bundle(&remote_addr, &bundle);
+                    match self.store.process_prekey_bundle(&remote_addr, &bundle) {
+                        Ok(_) => {},
+                        Err(e) => {
+                            // TODO: signalerror
+                        }
+                    }
                 }
             },
             Err(msg) => {
-                // TODO
+                // TODO: string
             }
         };
     }

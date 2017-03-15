@@ -6,7 +6,7 @@ use ::signal::state::{PreKeyRecord,SignedPreKeyRecord,PreKeyBundle};
 use ::signal::message::{CipherTextMessage,MessageType,PreKeySignalMessage,SignalMessage};
 use ::signal::protocol::SignalProtocolAddress;
 use ::signal::session;
-use ::signal::protocol::{SessionStore,SignedPreKeyStore,PreKeyStore,IdentityKeyStore};
+use ::signal::protocol::{SessionStore,SignedPreKeyStore,PreKeyStore,IdentityKeyStore,SignalProtocolStore};
 
 use rand::{OsRng, Rng};
 
@@ -37,7 +37,7 @@ fn test_basic_prekey_v3() {
                       &bob_signed_prekey_signature.to_vec(),
                       bob_store.get_identity_key_pair().get_public_key());
 
-    session::process_prekey_bundle(&mut alice_store, &bob_address, &bob_prekey).unwrap();
+    alice_store.process_prekey_bundle(&bob_address, &bob_prekey).unwrap();
 
     assert!(alice_store.contains_session(&bob_address));
     assert_eq!(alice_store.load_session(&bob_address).get_session_state().get_session_version(), 3);

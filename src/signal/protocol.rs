@@ -1,7 +1,10 @@
 use super::keys::{IdentityKeyPair,ECPublicKey,ECKeyPair};
 use super::state::{PreKeyBundle,PreKeyRecord,SignedPreKeyRecord};
 use super::ratchet::{SessionState,SessionRecord};
+use super::message::{PreKeySignalMessage};
 use super::curve::{curve25519_sign, curve25519_verify};
+use std::rc::Rc;
+use std::cell::RefCell;
 use std::cmp::Eq;
 use std::fmt;
 
@@ -139,7 +142,72 @@ pub trait SignalProtocolStore : IdentityKeyStore + PreKeyStore + SessionStore + 
         Ok(())
     }
 
+    fn process_prekey_message(&mut self, remote_address: &SignalProtocolAddress,
+                              session_record: &mut SessionRecord, message: &PreKeySignalMessage)
+                              -> Result<Option<u32>, SignalError> {
+
+        let their_identity_key = message.get_identity_key();
+        if ! self.is_trusted_identity(remote_address, &their_identity_key) {
+            return Err(SignalError::UntrustedIdentity)
+        }
+
+        // process v3
+        if session_record.has_session_state(message.get_version(), &message.get_base_key().serialize()) {
+            // We've already setup a session for this V3 message, letting bundled message fall through...
+            return Ok(None)
+        }
+
+        let spkr = self.load_signed_pre_key(
+            message.get_signed_pre_key_id()).unwrap();
+        let our_signed_pre_key = spkr.get_key_pair();
+
+        let one_time_pre_key = match message.get_pre_key_id() {
+            Some(id) => {
+                match self.load_pre_key(id) {
+                    Some(pre_key) => {
+                        Some(pre_key.get_key_pair().clone())
+                    },
+                    None => None
+                }
+            },
+            None => None
+        };
+
+        let mut session = SessionState::new();
+        session.initialize_as_bob(
+            &self.get_identity_key_pair(),
+            &our_signed_pre_key,
+            &our_signed_pre_key,
+            one_time_pre_key,
+            message.get_identity_key(),
+            message.get_base_key()
+        );
+
+        session.set_local_registration_id(self.get_local_registration_id());
+        session.set_remote_registration_id(message.get_registration_id());
+        session.set_alice_base_key(message.get_base_key().serialize().to_vec());
+
+        session_record.push_state(session);
+
+        let unsigned_pre_key_id = match message.get_pre_key_id() {
+            Some(id) => {
+                if id != 0xFFFFFF { // Medium.MAX_VALUE
+                    Ok(Some(id))
+                } else {
+                    Ok(None)
+                }
+            },
+            None => Ok(None)
+        };
+
+        self.store_identity(remote_address, &their_identity_key);
+
+        unsigned_pre_key_id
+    }
+
 }
+
+type SignalProtocolStoreRef = Rc<RefCell<SignalProtocolStore>>;
 
 #[cfg(test)]
 mod tests {
