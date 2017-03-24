@@ -110,7 +110,9 @@ impl PreKeyRecord {
         structure.merge_from_bytes(serialized).unwrap();
         PreKeyRecord {
             id: structure.get_id(),
-            keypair: ECKeyPair::new(&structure.take_privateKey(), &structure.take_publicKey())
+            keypair: ECKeyPair::create(
+                ECPrivateKey::deserialize(&structure.take_privateKey()),
+                ECPublicKey::deserialize(&structure.take_publicKey()))
         }
     }
 
@@ -189,7 +191,9 @@ impl SignedPreKeyRecord {
             id: structure.get_id(),
             timestamp: structure.get_timestamp(),
             signature: sig,
-            keypair: ECKeyPair::new(&structure.take_privateKey(), &structure.take_publicKey())
+            keypair: ECKeyPair::create(
+                ECPrivateKey::deserialize(&structure.take_privateKey()),
+                ECPublicKey::deserialize(&structure.take_publicKey()))
         }
     }
 
@@ -216,12 +220,12 @@ fn test() {
     use super::*;
 
     #[test]
-    fn generate_pre_key_records() {
+    fn generate_prekey_records() {
         PreKeyRecord::generate_prekeys(0, 100);
     }
 
     #[test]
-    fn serialise_pre_key_record() {
+    fn serialise_prekey_record() {
         let sk: Vec<u8> = vec![0x38, 0x11, 0x80, 0xe1, 0x87, 0x1d, 0x04, 0x4a, 0xde, 0xf9, 0x0c, 0xe8, 0x78, 0x25, 0xe1, 0xc1,
                                0x2b, 0xed, 0xba, 0x80, 0x28, 0xc2, 0x41, 0x02, 0x09, 0xb7, 0x42, 0x8d, 0xdc, 0xf6, 0x03, 0x49];
         let pk: Vec<u8> = vec![0x05, 0x0a, 0x3b, 0xbf, 0xa3, 0x01, 0xaa, 0x1f, 0xdd, 0x2a, 0x83, 0xab, 0x61, 0x26, 0x50, 0xae,
@@ -244,12 +248,12 @@ fn test() {
     }
 
     #[test]
-    fn generate_signed_pre_key_record() {
+    fn generate_signed_prekey_record() {
         SignedPreKeyRecord::generate(0, &IdentityKeyPair::generate());
     }
 
     #[test]
-    fn serialise_signed_pre_key() {
+    fn serialise_signed_prekey() {
         let id = 119;
         let kp_sk: Vec<u8> = vec![0x00, 0x43, 0x4d, 0xbc, 0xc6, 0xd8, 0x88, 0x8a, 0xab, 0x50, 0x5e, 0x72, 0x59, 0xfc, 0x6c, 0xea,
                                   0xfe, 0x54, 0x0e, 0xff, 0x45, 0x23, 0xb1, 0x92, 0xe8, 0x42, 0xfa, 0x37, 0xd7, 0x37, 0x3e, 0x42];
@@ -288,7 +292,7 @@ fn test() {
     }
 
     #[test]
-    fn test_signed_pre_key_valid() {
+    fn test_signed_prekey_valid() {
         let idkp = IdentityKeyPair::generate();
         let spkr = SignedPreKeyRecord::generate(0, &idkp);
         assert!(curve25519_verify(

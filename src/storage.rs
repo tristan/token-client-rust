@@ -1,28 +1,37 @@
-use super::rusqlite::{Connection, Error, ErrorCode};
-use signal::protocol::{SignalProtocolAddress,SignalProtocolStore,IdentityKeyStore,
+use super::rusqlite::{Connection}; //, Error, ErrorCode};
+use signal::protocol::{SignalProtocolAddress,
+                       SignalProtocolStoreImpl,IdentityKeyStore,
                        SessionStore,PreKeyStore,SignedPreKeyStore};
 use signal::state::{PreKeyRecord,SignedPreKeyRecord};
 use signal::ratchet::{SessionRecord};
 use signal::keys::{ECPublicKey,IdentityKeyPair};
+use account::{Account,AccountStore};
 
-pub struct SQLiteStore {
-    database: &'static str
+pub struct SQLiteProtocolStore {
+    database: String,
+    identity_keypair: IdentityKeyPair,
+    local_registration_id: u32
 }
 
 // Identity stuff
 
-impl SQLiteStore {
-    pub fn new(database: &'static str) -> SQLiteStore {
-        let store = SQLiteStore { database: database };
-        store.create_id_tables();
+impl SQLiteProtocolStore {
+    pub fn new(database: &str, identity_keypair: &IdentityKeyPair, local_registration_id: u32) -> SQLiteProtocolStore {
+        let store = SQLiteProtocolStore {
+            database: database.to_string(),
+            identity_keypair: identity_keypair.clone(),
+            local_registration_id: local_registration_id
+        };
+        store.create_tables();
         store
     }
     fn open(&self) -> Connection {
-        Connection::open(self.database).unwrap()
+        Connection::open(self.database.clone()).unwrap()
     }
 
-    fn create_id_tables(&self) {
+    fn create_tables(&self) {
         let con = self.open();
+        // identity store
         con.execute(
             "CREATE TABLE IF NOT EXISTS identity_store (
                  address TEXT,
@@ -30,42 +39,63 @@ impl SQLiteStore {
                  identity_key BLOB,
                  PRIMARY KEY (address, device_id)
                  );", &[]).unwrap();
+        // prekey store
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS prekey_store (
+                 prekey_id INTEGER,
+                 record BLOB,
+                 PRIMARY KEY (prekey_id)
+                 );", &[]).unwrap();
+        // session store
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS session_store (
+                 address TEXT,
+                 device_id INTEGER,
+                 record BLOB,
+                 PRIMARY KEY (address, device_id)
+                 );", &[]).unwrap();
+        // signed prekey store
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS signed_prekey_store (
+                 signed_prekey_id INTEGER,
+                 record BLOB,
+                 PRIMARY KEY (signed_prekey_id)
+                 );", &[]).unwrap();
     }
 }
 
-impl IdentityKeyStore for SQLiteStore {
+impl IdentityKeyStore for SQLiteProtocolStore {
 
-    fn get_identity_key_pair(&self) -> IdentityKeyPair {
-        // TODO:
-        IdentityKeyPair::generate()
+    fn get_identity_key_pair(&self) -> &IdentityKeyPair {
+        &self.identity_keypair
     }
 
     fn get_local_registration_id(&self) -> u32 {
-        // TODO:
-        0
+        self.local_registration_id
     }
 
     fn store_identity(&mut self, address: &SignalProtocolAddress, identity_key: &ECPublicKey) {
         let con = self.open();
         let res = con.execute(
-            "INSERT INTO identity_store (address, device_id, identity_key)
+            "INSERT OR REPLACE INTO identity_store (address, device_id, identity_key)
              VALUES ($1, $2, $3)",
-            &[address.get_address(), address.get_device_id(),
+            &[address.get_address(), &address.get_device_id(),
               &identity_key.serialize()]);
         match res {
             Ok(_) => {},
             Err(e) => {
-                // make sure the only error we count as ok is
-                // a constraint violation
-                match e {
-                    Error::SqliteFailure(f, _) => {
-                        match f.code {
-                            ErrorCode::ConstraintViolation => {},
-                            _ => panic!(e)
-                        }
-                    },
-                    _ => panic!(e)
-                }
+                // // make sure the only error we count as ok is
+                // // a constraint violation
+                // match e {
+                //     Error::SqliteFailure(f, _) => {
+                //         match f.code {
+                //             ErrorCode::ConstraintViolation => {},
+                //             _ => panic!(e)
+                //         }
+                //     },
+                //     _ => panic!(e)
+                // }
+                panic!(e)
             }
         }
     }
@@ -73,7 +103,7 @@ impl IdentityKeyStore for SQLiteStore {
         let con = self.open();
         let rval = con.query_row(
             "SELECT identity_key FROM identity_store WHERE address = $1 AND device_id = $2",
-            &[address.get_address(), address.get_device_id()],
+            &[address.get_address(), &address.get_device_id()],
             |row| {
                 let id: Vec<u8> = row.get(0);
                 ECPublicKey::deserialize(&id)
@@ -88,63 +118,256 @@ impl IdentityKeyStore for SQLiteStore {
 
 }
 
-impl PreKeyStore for SQLiteStore {
-    fn load_pre_key(&self, pre_key_id: u32) -> Option<PreKeyRecord> {
-        // match self.prekey_hash_map.get(&pre_key_id) {
-        //     Some(record) => Some(record.clone()),
-        //     None => None
-        // }
-        None
+impl PreKeyStore for SQLiteProtocolStore {
+    fn load_prekey(&self, prekey_id: u32) -> Option<PreKeyRecord> {
+        let con = self.open();
+        let rval = con.query_row(
+            "SELECT record FROM prekey_store WHERE prekey_id = $1",
+            &[&prekey_id],
+            |row| {
+                let record: Vec<u8> = row.get(0);
+                PreKeyRecord::deserialize(&record)
+            });
+        match rval {
+            Ok(record) => {
+                Some(record)
+            },
+            Err(_) => None
+        }
     }
-    fn store_pre_key(&mut self, pre_key_id: u32, record: &PreKeyRecord) {
-        //self.prekey_hash_map.insert(pre_key_id, record.clone());
+    fn store_prekey(&mut self, prekey_id: u32, record: &PreKeyRecord) {
+        let con = self.open();
+        let res = con.execute(
+            "INSERT INTO prekey_store (prekey_id, record)
+             VALUES ($1, $2)",
+            &[&prekey_id, &record.serialize()]);
+        match res {
+            Ok(_) => {},
+            Err(e) => {
+                // make sure the only error we count as ok is
+                // a constraint violation
+                // match e {
+                //     Error::SqliteFailure(f, _) => {
+                //         match f.code {
+                //             ErrorCode::ConstraintViolation => {},
+                //             _ => panic!(e)
+                //         }
+                //     },
+                //     _ => panic!(e)
+                // }
+                panic!(e)
+            }
+        }
     }
 
-    fn contains_pre_key(&self, pre_key_id: u32) -> bool {
-        //self.prekey_hash_map.contains_key(&pre_key_id)
-        false
+    fn contains_prekey(&self, prekey_id: u32) -> bool {
+        self.load_prekey(prekey_id).is_some()
     }
-    fn remove_pre_key(&mut self, pre_key_id: u32) {
-        //self.prekey_hash_map.remove(&pre_key_id);
+    fn remove_prekey(&mut self, prekey_id: u32) {
+        let con = self.open();
+        con.execute(
+            "DELETE FROM prekey_store WHERE prekey_id = $1",
+            &[&prekey_id]).unwrap();
     }
 }
 
-impl SessionStore for SQLiteStore {
+impl SessionStore for SQLiteProtocolStore {
     fn load_session(&self, address: &SignalProtocolAddress) -> SessionRecord {
-        // match self.session_hash_map.get(&address) {
-        //     Some(record) => record.clone(),
-        //     None => SessionRecord::new()
-        // }
-        SessionRecord::new()
+        let con = self.open();
+        let rval = con.query_row(
+            "SELECT record FROM session_store WHERE address = $1 AND device_id = $2",
+            &[address.get_address(), &address.get_device_id()],
+            |row| {
+                let record: Vec<u8> = row.get(0);
+                SessionRecord::deserialize(&record)
+            });
+        match rval {
+            Ok(record) => {
+                record
+            },
+            Err(_) => SessionRecord::new()
+        }
+
     }
     fn store_session(&mut self, address: &SignalProtocolAddress, record: &SessionRecord) {
-        //self.session_hash_map.insert(address.clone(), record.clone());
+        let con = self.open();
+        let res = con.execute(
+            "INSERT OR REPLACE INTO session_store (address, device_id, record)
+             VALUES ($1, $2, $3)",
+            &[address.get_address(), &address.get_device_id(),
+              &record.serialize()]);
+        match res {
+            Ok(_) => {},
+            Err(e) => panic!(e)
+        }
     }
     fn contains_session(&self, address: &SignalProtocolAddress) -> bool {
-        //self.session_hash_map.contains_key(&address)
-        false
+        let con = self.open();
+        let rval = con.query_row(
+            "SELECT 1 FROM session_store WHERE address = $1 AND device_id = $2",
+            &[address.get_address(), &address.get_device_id()],
+            |_| {
+                true
+            });
+        match rval {
+            Ok(_) => true,
+            Err(_) => false
+        }
     }
     fn delete_session(&mut self, address: &SignalProtocolAddress) {
-        //self.session_hash_map.remove(&address);
+        let con = self.open();
+        con.execute(
+            "DELETE FROM session_store WHERE address = $1 AND device_id = $2",
+            &[address.get_address(), &address.get_device_id()]).unwrap();
+    }
+
+    fn get_sub_device_sessions(&self, address: &String) -> Vec<u32> {
+        let con = self.open();
+        let mut stmt = con.prepare("SELECT device_id FROM session_store WHERE address = $1").unwrap();
+        let rows = stmt.query_map(&[address], |row| {
+            let val: u32 = row.get(0);
+            val
+        }).unwrap();
+        let mut v = Vec::new();
+        for val in rows {
+            let val = val.unwrap();
+            if val != 1 {
+                v.push(val);
+            }
+        }
+        v
     }
 }
 
-impl SignedPreKeyStore for SQLiteStore {
-    fn load_signed_pre_key(&self, id: u32) -> Option<SignedPreKeyRecord> {
-        // match self.signed_pre_key_store.get(&id) {
-        //     Some(record) => Some(record.clone()),
-        //     None => None
-        // }
-        None
+impl SignedPreKeyStore for SQLiteProtocolStore {
+    fn load_signed_prekey(&self, id: u32) -> Option<SignedPreKeyRecord> {
+        let con = self.open();
+        let rval = con.query_row(
+            "SELECT record FROM signed_prekey_store WHERE signed_prekey_id = $1",
+            &[&id],
+            |row| {
+                let record: Vec<u8> = row.get(0);
+                SignedPreKeyRecord::deserialize(&record)
+            });
+        match rval {
+            Ok(record) => {
+                Some(record)
+            },
+            Err(_) => None
+        }
     }
-    fn store_signed_pre_key(&mut self, id: u32, record: &SignedPreKeyRecord) {
-        //self.signed_pre_key_store.insert(id, record.clone());
+    fn store_signed_prekey(&mut self, id: u32, record: &SignedPreKeyRecord) {
+        let con = self.open();
+        let res = con.execute(
+            "INSERT INTO signed_prekey_store (signed_prekey_id, record)
+             VALUES ($1, $2)",
+            &[&id, &record.serialize()]);
+        match res {
+            Ok(_) => {},
+            Err(e) => {
+                // make sure the only error we count as ok is
+                // a constraint violation
+                // match e {
+                //     Error::SqliteFailure(f, _) => {
+                //         match f.code {
+                //             ErrorCode::ConstraintViolation => {},
+                //             _ => panic!(e)
+                //         }
+                //     },
+                //     _ => panic!(e)
+                // }
+                panic!(e)
+            }
+        }
+    }
+    fn contains_signed_prekey(&self, id: u32) -> bool {
+        self.load_signed_prekey(id).is_some()
+    }
+    fn remove_signed_prekey(&mut self, id: u32) {
+        let con = self.open();
+        con.execute(
+            "DELETE FROM signed_prekey_store WHERE signed_prekey_id = $1",
+            &[&id]).unwrap();
     }
 }
 
-impl SignalProtocolStore for SQLiteStore {
+impl SignalProtocolStoreImpl for SQLiteProtocolStore {
 }
 
+pub struct SQLiteAccountStore(String);
+
+impl SQLiteAccountStore {
+    pub fn new(database: &str) -> SQLiteAccountStore {
+        let store = SQLiteAccountStore(database.to_string());
+        store.create_tables();
+        store
+    }
+    fn create_tables(&self) {
+        let con = self.open();
+        // identity store
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS account_store (
+                 username TEXT,
+                 account BLOB,
+                 PRIMARY KEY (username)
+                 );", &[]).unwrap();
+    }
+    fn open(&self) -> Connection {
+        Connection::open(self.0.clone()).unwrap()
+    }
+}
+
+impl AccountStore for SQLiteAccountStore {
+    fn load_account(&self, username: &str) -> Option<Account> {
+        let con = self.open();
+        let rval = con.query_row(
+            "SELECT account FROM account_store WHERE username = $1",
+            &[&username],
+            |row| {
+                let record: Vec<u8> = row.get(0);
+                Account::deserialize(&record)
+            });
+        match rval {
+            Ok(record) => {
+                Some(record)
+            },
+            Err(_) => None
+        }
+    }
+    fn store_account(&mut self, account: &Account) {
+        let con = self.open();
+        let res = con.execute(
+            "INSERT INTO account_store (username, account)
+             VALUES ($1, $2)",
+            &[account.get_username(), &account.serialize()]);
+        match res {
+            Ok(_) => {},
+            Err(e) => {
+                // make sure the only error we count as ok is
+                // a constraint violation
+                // match e {
+                //     Error::SqliteFailure(f, _) => {
+                //         match f.code {
+                //             ErrorCode::ConstraintViolation => {},
+                //             _ => panic!(e)
+                //         }
+                //     },
+                //     _ => panic!(e)
+                // }
+                panic!(e)
+            }
+        }
+    }
+    fn contains_account(&self, username: &str) -> bool {
+        self.load_account(username).is_some()
+    }
+    fn remove_account(&mut self, username: &str) {
+        let con = self.open();
+        con.execute(
+            "DELETE FROM account_store WHERE username = $1",
+            &[&username]).unwrap();
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -159,7 +382,7 @@ mod tests {
 
         // try remove the test file if it already exists
         remove_file("/tmp/token-rust-test-store.db").unwrap_or(());
-        let mut idstore = SQLiteStore::new("/tmp/token-rust-test-store.db");
+        let mut idstore = SQLiteProtocolStore::new("/tmp/token-rust-test-store.db", &IdentityKeyPair::generate(), 0);
 
         let kp = IdentityKeyPair::generate();
         let kp2 = IdentityKeyPair::generate();

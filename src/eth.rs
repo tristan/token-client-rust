@@ -5,6 +5,7 @@ extern crate secp256k1;
 use std;
 use self::tiny_keccak::Keccak;
 use rand::{thread_rng, Rng};
+use rustc_serialize::hex::FromHex;
 
 lazy_static! {
 	static ref SECP256K1: secp256k1::Secp256k1 = secp256k1::Secp256k1::new();
@@ -34,7 +35,9 @@ macro_rules! impl_to_vec {
     };
 }
 
+#[derive(Clone)]
 pub struct SecretKey([u8;32]);
+#[derive(Clone,PartialEq)]
 pub struct Address([u8;20]);
 pub struct Signature([u8;65]);
 
@@ -47,6 +50,12 @@ impl_to_vec!(Signature);
 impl Address {
     pub fn to_string(&self) -> String {
         format!("0x{:x}", &self)
+    }
+    pub fn from_string(string: &str) -> Address {
+        assert_eq!(&string[..2], "0x");
+        let mut addr: [u8;20] = [0;20];
+        addr.copy_from_slice(&string[2..].from_hex().unwrap());
+        Address(addr)
     }
 }
 

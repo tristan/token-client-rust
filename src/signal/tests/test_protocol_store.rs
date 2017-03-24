@@ -20,7 +20,7 @@ pub struct TestProtocolStore {
     session_hash_map: HashMap<protocol::SignalProtocolAddress, SessionRecord>,
 
     // signed pre key store
-    signed_pre_key_store: HashMap<u32, SignedPreKeyRecord>,
+    signed_prekey_store: HashMap<u32, SignedPreKeyRecord>,
 }
 
 impl TestProtocolStore {
@@ -31,14 +31,14 @@ impl TestProtocolStore {
             identity_hash_map: HashMap::new(),
             prekey_hash_map: HashMap::new(),
             session_hash_map: HashMap::new(),
-            signed_pre_key_store: HashMap::new()
+            signed_prekey_store: HashMap::new()
         }
     }
 }
 
 impl protocol::IdentityKeyStore for TestProtocolStore {
-    fn get_identity_key_pair(&self) -> IdentityKeyPair {
-        self.identity_key_pair.clone()
+    fn get_identity_key_pair(&self) -> &IdentityKeyPair {
+        &self.identity_key_pair
     }
 
     fn get_local_registration_id(&self) -> u32 {
@@ -60,21 +60,21 @@ impl protocol::IdentityKeyStore for TestProtocolStore {
 }
 
 impl protocol::PreKeyStore for TestProtocolStore {
-    fn load_pre_key(&self, pre_key_id: u32) -> Option<PreKeyRecord> {
-        match self.prekey_hash_map.get(&pre_key_id) {
+    fn load_prekey(&self, prekey_id: u32) -> Option<PreKeyRecord> {
+        match self.prekey_hash_map.get(&prekey_id) {
             Some(record) => Some(record.clone()),
             None => None
         }
     }
-    fn store_pre_key(&mut self, pre_key_id: u32, record: &PreKeyRecord) {
-        self.prekey_hash_map.insert(pre_key_id, record.clone());
+    fn store_prekey(&mut self, prekey_id: u32, record: &PreKeyRecord) {
+        self.prekey_hash_map.insert(prekey_id, record.clone());
     }
 
-    fn contains_pre_key(&self, pre_key_id: u32) -> bool {
-        self.prekey_hash_map.contains_key(&pre_key_id)
+    fn contains_prekey(&self, prekey_id: u32) -> bool {
+        self.prekey_hash_map.contains_key(&prekey_id)
     }
-    fn remove_pre_key(&mut self, pre_key_id: u32) {
-        self.prekey_hash_map.remove(&pre_key_id);
+    fn remove_prekey(&mut self, prekey_id: u32) {
+        self.prekey_hash_map.remove(&prekey_id);
     }
 }
 
@@ -94,19 +94,36 @@ impl protocol::SessionStore for TestProtocolStore {
     fn delete_session(&mut self, address: &protocol::SignalProtocolAddress) {
         self.session_hash_map.remove(&address);
     }
+
+    fn get_sub_device_sessions(&self, address: &String) -> Vec<u32> {
+        let mut res: Vec<u32> = Vec::new();
+        for key in self.session_hash_map.keys() {
+            if key.get_address() == address && key.get_device_id() != 1 {
+                res.push(key.get_device_id());
+            }
+        }
+        return res;
+    }
 }
 
 impl protocol::SignedPreKeyStore for TestProtocolStore {
-    fn load_signed_pre_key(&self, id: u32) -> Option<SignedPreKeyRecord> {
-        match self.signed_pre_key_store.get(&id) {
+    fn load_signed_prekey(&self, id: u32) -> Option<SignedPreKeyRecord> {
+        match self.signed_prekey_store.get(&id) {
             Some(record) => Some(record.clone()),
             None => None
         }
     }
-    fn store_signed_pre_key(&mut self, id: u32, record: &SignedPreKeyRecord) {
-        self.signed_pre_key_store.insert(id, record.clone());
+    fn store_signed_prekey(&mut self, id: u32, record: &SignedPreKeyRecord) {
+        self.signed_prekey_store.insert(id, record.clone());
+    }
+
+    fn contains_signed_prekey(&self, id: u32) -> bool {
+        self.signed_prekey_store.contains_key(&id)
+    }
+    fn remove_signed_prekey(&mut self, id: u32) {
+        self.signed_prekey_store.remove(&id);
     }
 }
 
-impl protocol::SignalProtocolStore for TestProtocolStore {
+impl protocol::SignalProtocolStoreImpl for TestProtocolStore {
 }

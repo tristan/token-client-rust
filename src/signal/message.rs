@@ -2,7 +2,7 @@ extern crate rustc_serialize;
 extern crate crypto;
 
 use rustc_serialize::base64::{ToBase64, FromBase64, STANDARD};
-use protobuf::{Message as ProtoBufMessage};
+use protobuf::{Message as ProtobufMessage};
 use super::keys::{ECPublicKey};
 use super::WhisperTextProtocol;
 use self::crypto::mac::Mac;
@@ -10,15 +10,18 @@ use self::crypto::hmac::Hmac;
 use self::crypto::sha2::Sha256;
 use std::any::Any;
 
+use super::SignalService::{DataMessage as SignalDataMessage, DataMessage_Flags, Envelope as SignalEnvelope};
+use super::time;
+
 const MAC_LENGTH: usize = 8;
 
 #[derive(Debug,PartialEq)]
 pub enum MessageType {
     WHISPER = 2,
     PREKEY,
-    SENDERKEY,
-    SENDERKEY_DISTRIBUTION,
-    ENCRYPTED_MESSAGE_OVERHEAD = 53
+    // SENDERKEY,
+    // SENDERKEY_DISTRIBUTION,
+    // ENCRYPTED_MESSAGE_OVERHEAD = 53
 }
 
 const UNSUPPORTED_VERSION: u32 = 1;
@@ -170,8 +173,8 @@ impl SignalMessage {
 pub struct PreKeySignalMessage {
     version: u32,
     registration_id: u32,
-    pre_key_id: Option<u32>,
-    signed_pre_key_id: Option<u32>,
+    prekey_id: Option<u32>,
+    signed_prekey_id: Option<u32>,
     base_key: ECPublicKey,
     identity_key: ECPublicKey,
     message: SignalMessage
@@ -190,16 +193,16 @@ impl PreKeySignalMessage {
 
     pub fn new(version: u32,
                registration_id: u32,
-               pre_key_id: Option<u32>,
-               signed_pre_key_id: Option<u32>, // TODO: this probably doesn't need to be an option
+               prekey_id: Option<u32>,
+               signed_prekey_id: Option<u32>, // TODO: this probably doesn't need to be an option
                base_key: &ECPublicKey,
                identity_key: &ECPublicKey,
                message: SignalMessage) -> PreKeySignalMessage {
         PreKeySignalMessage {
             version: version,
             registration_id: registration_id,
-            pre_key_id: pre_key_id,
-            signed_pre_key_id: signed_pre_key_id,
+            prekey_id: prekey_id,
+            signed_prekey_id: signed_prekey_id,
             base_key: base_key.clone(),
             identity_key: identity_key.clone(),
             message: message
@@ -235,8 +238,8 @@ impl PreKeySignalMessage {
         Ok(PreKeySignalMessage {
             version: version,
             registration_id: prekeywhispermessage.get_registrationId(),
-            pre_key_id: if prekeywhispermessage.has_preKeyId() { Some(prekeywhispermessage.get_preKeyId()) } else { None },
-            signed_pre_key_id: if prekeywhispermessage.has_signedPreKeyId() {
+            prekey_id: if prekeywhispermessage.has_preKeyId() { Some(prekeywhispermessage.get_preKeyId()) } else { None },
+            signed_prekey_id: if prekeywhispermessage.has_signedPreKeyId() {
                 Some(prekeywhispermessage.get_signedPreKeyId())
             } else {
                 None
@@ -250,7 +253,7 @@ impl PreKeySignalMessage {
     pub fn serialize(&self) -> Vec<u8> {
         let mut serialized: Vec<u8> = vec![ints_to_byte_high_and_low(self.version, CURRENT_VERSION)];
         let mut message = WhisperTextProtocol::PreKeySignalMessage::new();
-        match self.signed_pre_key_id {
+        match self.signed_prekey_id {
             Some(id) => message.set_signedPreKeyId(id),
             None => panic!("shouldn't happen") // TODO
         };
@@ -258,7 +261,7 @@ impl PreKeySignalMessage {
         message.set_identityKey(self.identity_key.serialize());
         message.set_message(self.message.serialize());
         message.set_registrationId(self.registration_id);
-        match self.pre_key_id {
+        match self.prekey_id {
             Some(id) => message.set_preKeyId(id),
             None => {}
         };
@@ -282,19 +285,74 @@ impl PreKeySignalMessage {
         &self.base_key
     }
 
-    pub fn get_signed_pre_key_id(&self) -> u32 {
-        match self.signed_pre_key_id {
+    pub fn get_signed_prekey_id(&self) -> u32 {
+        match self.signed_prekey_id {
             Some(val) => val,
-            _ => panic!("Unexpectedly called get_signed_pre_key_id before key id was set")
+            _ => panic!("Unexpectedly called get_signed_prekey_id before key id was set")
         }
     }
 
-    pub fn get_pre_key_id(&self) -> Option<u32> {
-        self.pre_key_id
+    pub fn get_prekey_id(&self) -> Option<u32> {
+        self.prekey_id
     }
 
     pub fn get_whisper_message(&self) -> &SignalMessage {
         &self.message
+    }
+}
+
+// -------------------------------------------------------------------
+// SERVICE MESSAGES
+// -------------------------------------------------------------------
+
+pub struct DataMessage {
+    timestamp: i64,
+    body: String,
+    end_session: bool,
+    expires_in_seconds: u32,
+    expiration_update: bool
+    // TODO: attachments, group
+}
+
+impl DataMessage {
+    pub fn with_body(body: &str) -> DataMessage {
+        let timestamp = {
+            let timespec = time::get_time();
+            (timespec.sec as i64 * 1000) + (timespec.nsec as i64 / 1000 / 1000)
+        };
+        Self::with_body_and_timestamp(body, timestamp)
+    }
+
+    pub fn with_body_and_timestamp(body: &str, timestamp: i64) -> DataMessage {
+        DataMessage {
+            timestamp: timestamp,
+            body: body.to_string(),
+            end_session: false,
+            expiration_update: false,
+            expires_in_seconds: 0
+        }
+    }
+
+    pub fn get_timestamp(&self) -> i64 {
+        self.timestamp
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        // TODO attachments & groupinfo
+        // see: https://github.com/WhisperSystems/libsignal-service-java/blob/master/java/src/main/java/org/whispersystems/signalservice/api/SignalServiceMessageSender.java#L208
+
+        let mut dm = SignalDataMessage::new();
+        dm.set_body(self.body.clone());
+        if self.end_session {
+            dm.set_flags(DataMessage_Flags::END_SESSION as u32);
+        }
+        if self.expiration_update {
+            dm.set_flags(DataMessage_Flags::EXPIRATION_TIMER_UPDATE as u32);
+        }
+        if self.expires_in_seconds > 0 {
+            dm.set_expireTimer(self.expires_in_seconds);
+        }
+        dm.write_to_bytes().unwrap()
     }
 }
 
@@ -314,7 +372,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_pre_key_message() {
+    fn test_deserialize_prekey_message() {
         let enc = "MwgAEiEFQOTVzkCPZs3b3uZPCUxID32du0j1sWFkV2dFophSNhQaIQXhlL+gTObHHts8kvIIUuXQlZjilwmb/IKW3tww+ZhwBCLTATMKIQWuJkY2IQxxzdosVTIcvCqJzJawaN5ElaWQiZkDfXgIERAAGAAioAE+FeNIvG9P2UOOPlT/FIdjS3uuz0kEe1x1hXEgIstZYQmyKn8KJ2Hg1HFXvhfX5Gm6970nqLtoOFuASFObLnCOGJVzjTjk/w13OARLn1DVXOF3QL4oTc2Wf75/oOZuJWGgn9F8SPXnJ2BphVQW2jzkskyaOXiR/zk1ESeVgIbCpuuXiHbjhbGj7QGu06Zky6iMp0YQXB1ipL8qCRocwOUB46R0i5PDTgYovGcwAA==";
         let serialized: Vec<u8> = enc.from_base64().unwrap();
 
@@ -347,4 +405,37 @@ mod tests {
 
         let exp = "hello";
     }
+
+    // #[test]
+    // fn test_envelope() {
+    //     let pb: Vec<u8> = vec![
+    //         0x01, 0xd8, 0xc8, 0x77, 0xd5, 0xf9, 0x69, 0xe2, 0x05, 0x3d, 0x76, 0x80, 0x9c, 0xd6, 0x24, 0xb2,
+    //         0x25, 0xf5, 0x64, 0x7d, 0xb6, 0x49, 0xb5, 0x3f, 0xda, 0x35, 0x13, 0x6d, 0x0e, 0xc7, 0x7e, 0xda,
+    //         0xf5, 0xfc, 0x26, 0xe9, 0x69, 0x87, 0x5c, 0x16, 0x79, 0x19, 0x3c, 0xbe, 0xd2, 0x73, 0xe8, 0xf7,
+    //         0xcb, 0x99, 0xd9, 0x13, 0x64, 0x7b, 0xc5, 0x7e, 0xcd, 0xfb, 0x64, 0x7e, 0xe9, 0x12, 0x8f, 0x25,
+    //         0xfd, 0xfe, 0x1e, 0x89, 0x66, 0xb6, 0xa9, 0x6c, 0x69, 0x84, 0x7f, 0x80, 0x80, 0x75, 0x87, 0xdb,
+    //         0x3c, 0x28, 0xa8, 0x3c, 0xa8, 0x3d, 0xb6, 0x63, 0xc8, 0xee, 0xf5, 0x97, 0x32, 0xe4, 0x34, 0xe8,
+    //         0x67, 0x02, 0x00, 0x69, 0x70, 0x6f, 0x20, 0x1e, 0x69, 0x92, 0x56, 0x9e, 0x1d, 0x49, 0x32, 0x21,
+    //         0xfe, 0xf6, 0xaf, 0x43, 0xc2, 0xfb, 0xbc, 0xa4, 0x6c, 0xb2, 0x7c, 0x92, 0x79, 0x15, 0x9f, 0xfe,
+    //         0xdd, 0x1d, 0xdf, 0x9b, 0xa5, 0x63, 0x77, 0x43, 0x92, 0xbb, 0xb8, 0x64, 0x4a, 0xe1, 0x16, 0x1a,
+    //         0xa6, 0xa8, 0xb1, 0x72, 0xee, 0x17, 0x77, 0xee, 0xfd, 0xd3, 0x98, 0x04, 0xcb, 0xdd, 0x1c, 0x00,
+    //         0xb1, 0xf0, 0x09, 0x72, 0x4a, 0xab, 0xaa, 0xf3, 0x36, 0x6f, 0xe8, 0x92, 0x8a, 0x39, 0x45, 0x94,
+    //         0xa7, 0xb6, 0x25, 0xf5, 0xec, 0xa1, 0x5a, 0x96, 0x42, 0xb0, 0xd4, 0x11, 0x57, 0x47, 0x20, 0x23,
+    //         0x5f, 0x06, 0xae, 0xa6, 0xbb, 0x14, 0xb1, 0x79, 0xa9, 0x29, 0xdd, 0xb9, 0x35, 0x3b, 0x0f, 0xb5,
+    //         0x6a, 0x96, 0x13, 0x1b, 0x80, 0x54, 0x39, 0x3e, 0x87, 0xc4, 0x6a, 0xfb, 0x02, 0xc3, 0x8b, 0x4d,
+    //         0xb4, 0x68, 0xdc, 0x4e, 0xe7, 0x28, 0x22, 0x38, 0x45, 0xeb, 0x03, 0xd0, 0xd1, 0x45, 0x7f, 0x76,
+    //         0xcb, 0xec, 0x3b, 0xec, 0x85, 0x52, 0x85, 0x23, 0x67, 0x08, 0xc9, 0x6f, 0xdf, 0xcc, 0xb8, 0x81,
+    //         0xdb, 0x70, 0x7d, 0x36, 0xd5, 0x80, 0x93, 0x14, 0xd0, 0x8a, 0x38, 0xdb, 0x05, 0x7d, 0x04, 0x28,
+    //         0x77, 0xf7, 0x56, 0x1e, 0x32, 0xd5, 0x3f, 0x2c, 0xc6, 0x9f, 0xa7, 0x3a, 0x36, 0x55, 0x79, 0x78,
+    //         0x2b, 0x74, 0x05, 0xaa, 0xef, 0x09, 0x9d, 0x5a, 0xa1, 0x32, 0xa0, 0xde, 0x41, 0x5e, 0x32, 0x61,
+    //         0xef, 0x24, 0x27, 0xcd, 0x91, 0x1b, 0xc4, 0x71, 0xa4, 0x1b, 0x2b, 0xdd, 0xc7, 0x45, 0xa1, 0xd9,
+    //         0x75, 0xcb, 0x9a, 0x9c, 0xf8, 0xd4, 0x24, 0x51, 0x64, 0x50, 0x78, 0x09, 0x8f, 0x0d, 0xbe, 0x7b,
+    //         0xe9, 0xf3, 0x84, 0x10, 0xd9, 0xd8, 0xbd, 0x6c, 0xee, 0x5f, 0x15, 0x05, 0x15, 0xd0, 0xc7, 0xaa,
+    //         0x46, 0xc7, 0x4d, 0x63, 0xf7, 0xdc, 0x53, 0x45, 0x1e, 0xda, 0x92, 0x49, 0x3e, 0xc4, 0xce, 0xd3,
+    //         0xf1, 0x89, 0x37, 0xe5, 0x44, 0x6f, 0x71, 0x99, 0xda, 0x41, 0xe6, 0xd0, 0x64, 0x1e, 0x23, 0xf4,
+    //         0x0b, 0xe1, 0xb9, 0x1e, 0x57, 0xfb, 0xac, 0xf1, 0x66, 0xc0, 0x53];
+
+    //     let mut envelope = SignalEnvelope::new();
+    //     envelope.merge_from_bytes(&pb).unwrap();
+    // }
 }

@@ -20,8 +20,8 @@ pub fn decrypt_prekey_message(store: &mut SignalProtocolStore,
                 &record);
             // remove pre key if a match was found
             match id {
-                Some(unsigned_pre_key_id) => {
-                    store.remove_pre_key(unsigned_pre_key_id)
+                Some(unsigned_prekey_id) => {
+                    store.remove_prekey(unsigned_prekey_id)
                 },
                 None => {}
             };

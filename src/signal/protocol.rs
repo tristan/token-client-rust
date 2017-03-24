@@ -1,8 +1,10 @@
 use super::keys::{IdentityKeyPair,ECPublicKey,ECKeyPair};
+#[cfg(test)]
+use super::keys::{ECPrivateKey};
 use super::state::{PreKeyBundle,PreKeyRecord,SignedPreKeyRecord};
 use super::ratchet::{SessionState,SessionRecord};
 use super::message::{PreKeySignalMessage};
-use super::curve::{curve25519_sign, curve25519_verify};
+use super::curve::{curve25519_verify};
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::cmp::Eq;
@@ -57,13 +59,13 @@ impl SignalProtocolAddress {
     pub fn get_address(&self) -> &String {
         &self.address
     }
-    pub fn get_device_id(&self) -> &u32 {
-        &self.device_id
+    pub fn get_device_id(&self) -> u32 {
+        self.device_id
     }
 }
 
 pub trait IdentityKeyStore {
-    fn get_identity_key_pair(&self) -> IdentityKeyPair;
+    fn get_identity_key_pair(&self) -> &IdentityKeyPair;
     fn get_local_registration_id(&self) -> u32;
 
     fn store_identity(&mut self, address: &SignalProtocolAddress, identity_key: &ECPublicKey);
@@ -80,10 +82,10 @@ pub trait IdentityKeyStore {
 }
 
 pub trait PreKeyStore {
-    fn load_pre_key(&self, pre_key_id: u32) -> Option<PreKeyRecord>;
-    fn store_pre_key(&mut self, pre_key_id: u32, record: &PreKeyRecord);
-    fn contains_pre_key(&self, pre_key_id: u32) -> bool;
-    fn remove_pre_key(&mut self, pre_key_id: u32);
+    fn load_prekey(&self, prekey_id: u32) -> Option<PreKeyRecord>;
+    fn store_prekey(&mut self, prekey_id: u32, record: &PreKeyRecord);
+    fn contains_prekey(&self, prekey_id: u32) -> bool;
+    fn remove_prekey(&mut self, prekey_id: u32);
 }
 
 pub trait SessionStore {
@@ -92,14 +94,18 @@ pub trait SessionStore {
     fn store_session(&mut self, address: &SignalProtocolAddress, record: &SessionRecord);
     fn contains_session(&self, address: &SignalProtocolAddress) -> bool;
     fn delete_session(&mut self, address: &SignalProtocolAddress);
+
+    fn get_sub_device_sessions(&self, address: &String) -> Vec<u32>;
 }
 
 pub trait SignedPreKeyStore {
-    fn load_signed_pre_key(&self, id: u32) -> Option<SignedPreKeyRecord>;
-    fn store_signed_pre_key(&mut self, id: u32, record: &SignedPreKeyRecord);
+    fn load_signed_prekey(&self, id: u32) -> Option<SignedPreKeyRecord>;
+    fn store_signed_prekey(&mut self, id: u32, record: &SignedPreKeyRecord);
+    fn contains_signed_prekey(&self, id: u32) -> bool;
+    fn remove_signed_prekey(&mut self, id: u32);
 }
 
-pub trait SignalProtocolStore : IdentityKeyStore + PreKeyStore + SessionStore + SignedPreKeyStore {
+pub trait SignalProtocolStoreImpl : IdentityKeyStore + PreKeyStore + SessionStore + SignedPreKeyStore {
 
     fn process_prekey_bundle(&mut self,
                              remote_address: &SignalProtocolAddress,
@@ -116,6 +122,12 @@ pub trait SignalProtocolStore : IdentityKeyStore + PreKeyStore + SessionStore + 
         }
 
         let mut session_record = self.load_session(remote_address);
+        // to ensure tests always return the same results
+        #[cfg(test)]
+        let our_base_key = ECKeyPair::create(
+            ECPrivateKey::deserialize(&vec![144, 193, 85, 136, 117, 98, 48, 253, 174, 72, 43, 253, 209, 73, 136, 162, 79, 26, 183, 215, 197, 55, 220, 101, 171, 253, 238, 238, 220, 53, 200, 112]),
+            ECPublicKey::deserialize(&vec![5, 112, 106, 1, 234, 114, 124, 179, 151, 247, 226, 24, 184, 163, 15, 62, 55, 86, 63, 56, 16, 163, 51, 184, 208, 235, 190, 242, 133, 154, 152, 65, 36]));
+        #[cfg(not(test))]
         let our_base_key = ECKeyPair::generate();
         let their_signed_prekey = prekey.get_signed_prekey();
 
@@ -157,15 +169,15 @@ pub trait SignalProtocolStore : IdentityKeyStore + PreKeyStore + SessionStore + 
             return Ok(None)
         }
 
-        let spkr = self.load_signed_pre_key(
-            message.get_signed_pre_key_id()).unwrap();
-        let our_signed_pre_key = spkr.get_key_pair();
+        let spkr = self.load_signed_prekey(
+            message.get_signed_prekey_id()).unwrap();
+        let our_signed_prekey = spkr.get_key_pair();
 
-        let one_time_pre_key = match message.get_pre_key_id() {
+        let one_time_prekey = match message.get_prekey_id() {
             Some(id) => {
-                match self.load_pre_key(id) {
-                    Some(pre_key) => {
-                        Some(pre_key.get_key_pair().clone())
+                match self.load_prekey(id) {
+                    Some(prekey) => {
+                        Some(prekey.get_key_pair().clone())
                     },
                     None => None
                 }
@@ -176,9 +188,9 @@ pub trait SignalProtocolStore : IdentityKeyStore + PreKeyStore + SessionStore + 
         let mut session = SessionState::new();
         session.initialize_as_bob(
             &self.get_identity_key_pair(),
-            &our_signed_pre_key,
-            &our_signed_pre_key,
-            one_time_pre_key,
+            &our_signed_prekey,
+            &our_signed_prekey,
+            one_time_prekey,
             message.get_identity_key(),
             message.get_base_key()
         );
@@ -189,7 +201,7 @@ pub trait SignalProtocolStore : IdentityKeyStore + PreKeyStore + SessionStore + 
 
         session_record.push_state(session);
 
-        let unsigned_pre_key_id = match message.get_pre_key_id() {
+        let unsigned_prekey_id = match message.get_prekey_id() {
             Some(id) => {
                 if id != 0xFFFFFF { // Medium.MAX_VALUE
                     Ok(Some(id))
@@ -202,12 +214,102 @@ pub trait SignalProtocolStore : IdentityKeyStore + PreKeyStore + SessionStore + 
 
         self.store_identity(remote_address, &their_identity_key);
 
-        unsigned_pre_key_id
+        unsigned_prekey_id
     }
 
 }
 
-type SignalProtocolStoreRef = Rc<RefCell<SignalProtocolStore>>;
+pub type SignalProtocolStoreRef = Rc<RefCell<Box<SignalProtocolStoreImpl>>>;
+
+#[derive(Clone)]
+pub struct SignalProtocolStore(SignalProtocolStoreRef);
+
+impl SignalProtocolStore {
+    pub fn new(store: Box<SignalProtocolStoreImpl>) -> SignalProtocolStore {
+        SignalProtocolStore(Rc::new(RefCell::new(store)))
+    }
+
+    // identity
+    pub fn get_identity_key_pair(&self) -> IdentityKeyPair {
+        (self.0.borrow()).get_identity_key_pair().clone()
+    }
+    pub fn get_local_registration_id(&self) -> u32 {
+        (self.0.borrow()).get_local_registration_id()
+    }
+
+    pub fn store_identity(&mut self, address: &SignalProtocolAddress, identity_key: &ECPublicKey) {
+        (self.0.borrow_mut()).store_identity(address, identity_key)
+    }
+    pub fn load_identity(&self, address: &SignalProtocolAddress) -> Option<ECPublicKey> {
+        (self.0.borrow_mut()).load_identity(address)
+    }
+
+    pub fn is_trusted_identity(&self, address: &SignalProtocolAddress, identity_key: &ECPublicKey) -> bool {
+        (self.0.borrow_mut()).is_trusted_identity(address, identity_key)
+    }
+
+    // prekey
+    pub fn load_prekey(&self, prekey_id: u32) -> Option<PreKeyRecord> {
+        (self.0.borrow()).load_prekey(prekey_id)
+    }
+    pub fn store_prekey(&mut self, prekey_id: u32, record: &PreKeyRecord) {
+        (self.0.borrow_mut()).store_prekey(prekey_id, record)
+    }
+    pub fn contains_prekey(&self, prekey_id: u32) -> bool {
+        (self.0.borrow()).contains_prekey(prekey_id)
+    }
+    pub fn remove_prekey(&mut self, prekey_id: u32) {
+        (self.0.borrow_mut()).remove_prekey(prekey_id)
+    }
+
+    // session
+    pub fn load_session(&self, address: &SignalProtocolAddress) -> SessionRecord {
+        (self.0.borrow()).load_session(address)
+    }
+    pub fn store_session(&mut self, address: &SignalProtocolAddress, record: &SessionRecord) {
+        (self.0.borrow_mut()).store_session(address, record)
+    }
+    pub fn contains_session(&self, address: &SignalProtocolAddress) -> bool {
+        (self.0.borrow()).contains_session(address)
+    }
+    pub fn delete_session(&mut self, address: &SignalProtocolAddress) {
+        (self.0.borrow_mut()).delete_session(address)
+    }
+
+    pub fn get_sub_device_sessions(&self, address: &String) -> Vec<u32> {
+        (self.0.borrow()).get_sub_device_sessions(address)
+    }
+
+    // signed prekey
+    pub fn load_signed_prekey(&self, id: u32) -> Option<SignedPreKeyRecord> {
+        (self.0.borrow()).load_signed_prekey(id)
+    }
+    pub fn store_signed_prekey(&mut self, id: u32, record: &SignedPreKeyRecord) {
+        (self.0.borrow_mut()).store_signed_prekey(id, record)
+    }
+    pub fn contains_signed_prekey(&self, id: u32) -> bool {
+        (self.0.borrow()).contains_signed_prekey(id)
+    }
+    pub fn remove_signed_prekey(&mut self, id: u32) {
+        (self.0.borrow_mut()).remove_signed_prekey(id)
+    }
+
+    // misc
+
+    pub fn process_prekey_bundle(&mut self,
+                                 remote_address: &SignalProtocolAddress,
+                                 prekey: &PreKeyBundle)
+                                 -> Result<(), SignalError> {
+        (self.0.borrow_mut()).process_prekey_bundle(remote_address, prekey)
+    }
+    pub fn process_prekey_message(&mut self, remote_address: &SignalProtocolAddress,
+                                  session_record: &mut SessionRecord, message: &PreKeySignalMessage)
+                                  -> Result<Option<u32>, SignalError> {
+        (self.0.borrow_mut()).process_prekey_message(remote_address, session_record, message)
+    }
+}
+
+macro_rules! new_protocol_store { ($store:expr) => (SignalProtocolStore::new(Box::new($store))) }
 
 #[cfg(test)]
 mod tests {
@@ -221,11 +323,12 @@ mod tests {
         struct IdStore<'a> {
             addr: &'a SignalProtocolAddress,
             identity_key: &'a ECPublicKey,
+            id_keypair: IdentityKeyPair,
             saved: bool
         }
         impl<'a> IdentityKeyStore for IdStore<'a> {
-            fn get_identity_key_pair(&self) -> IdentityKeyPair {
-                IdentityKeyPair::generate() // lol
+            fn get_identity_key_pair(&self) -> &IdentityKeyPair {
+                &self.id_keypair
             }
             fn get_local_registration_id(&self) -> u32 {
                 0
@@ -247,7 +350,7 @@ mod tests {
         let kp3 = IdentityKeyPair::deserialize(&kp.serialize());
         let addr = SignalProtocolAddress::new("0x1234567890123456789012345678901234567890".to_string(), 1);
         let addr2 = SignalProtocolAddress::new("0x1234567890123456789012345678901234567890".to_string(), 1);
-        let mut idstore = IdStore { addr: &addr, identity_key: kp.get_public_key(), saved: false };
+        let mut idstore = IdStore { addr: &addr, identity_key: kp.get_public_key(), id_keypair: IdentityKeyPair::generate(), saved: false };
         assert_eq!(idstore.is_trusted_identity(&addr, &kp.get_public_key()), true);
         assert_eq!(idstore.is_trusted_identity(&addr, &kp2.get_public_key()), true);
         idstore.store_identity(&addr, &kp.get_public_key());

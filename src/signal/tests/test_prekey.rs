@@ -6,7 +6,7 @@ use ::signal::state::{PreKeyRecord,SignedPreKeyRecord,PreKeyBundle};
 use ::signal::message::{CipherTextMessage,MessageType,PreKeySignalMessage,SignalMessage};
 use ::signal::protocol::SignalProtocolAddress;
 use ::signal::session;
-use ::signal::protocol::{SessionStore,SignedPreKeyStore,PreKeyStore,IdentityKeyStore,SignalProtocolStore};
+use ::signal::protocol::{SessionStore,SignedPreKeyStore,PreKeyStore,IdentityKeyStore,SignalProtocolStoreImpl,SignalProtocolStore};
 
 use rand::{OsRng, Rng};
 
@@ -22,9 +22,9 @@ fn test_basic_prekey_v3() {
     let bob_identity_keypair = IdentityKeyPair::generate();
     let bob_registration_id = rng.gen_range(1, 16381);
 
-    let mut alice_store = TestProtocolStore::new(&alice_identity_keypair, alice_registration_id);
+    let mut alice_store = new_protocol_store!(TestProtocolStore::new(&alice_identity_keypair, alice_registration_id));
     //let mut alice_session_builder = SessionBuilder::new(&mut alice_store, &bob_address);
-    let mut bob_store = TestProtocolStore::new(&bob_identity_keypair, bob_registration_id);
+    let mut bob_store = new_protocol_store!(TestProtocolStore::new(&bob_identity_keypair, bob_registration_id));
 
     let bob_prekey_pair = ECKeyPair::generate();
     let bob_signed_prekey_record = SignedPreKeyRecord::generate(22, &bob_identity_keypair);
@@ -49,8 +49,8 @@ fn test_basic_prekey_v3() {
     let outgoing_message = outgoing_message.as_any().downcast_ref::<PreKeySignalMessage>().unwrap();
 
     let incoming_message = PreKeySignalMessage::deserialize(&outgoing_message.serialize()).unwrap();
-    bob_store.store_pre_key(31337, &PreKeyRecord::new(bob_prekey.get_prekey_id().unwrap(), &bob_prekey_pair));
-    bob_store.store_signed_pre_key(bob_signed_prekey_record.get_id(), &bob_signed_prekey_record);
+    bob_store.store_prekey(31337, &PreKeyRecord::new(bob_prekey.get_prekey_id().unwrap(), &bob_prekey_pair));
+    bob_store.store_signed_prekey(bob_signed_prekey_record.get_id(), &bob_signed_prekey_record);
 
     let plaintext = session::decrypt_prekey_message(&mut bob_store, &alice_address, &incoming_message).unwrap();
     assert_eq!(plaintext, original_message);

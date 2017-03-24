@@ -2,23 +2,23 @@ use ::eth::{Address,SecretKey};
 use super::{request,signed_request,Method};
 use json::JsonValue;
 
-pub struct IdService<'a> {
-    base_url: &'static str,
-    signing_key: &'a SecretKey
+pub struct IdService {
+    base_url: String,
+    signing_key: SecretKey
 }
 
-impl<'a> IdService<'a> {
-    pub fn new(base_url: &'static str, signing_key: &'a SecretKey) -> IdService<'a> {
+impl IdService {
+    pub fn new(base_url: &str, signing_key: &SecretKey) -> IdService {
         IdService {
-            base_url: base_url,
-            signing_key: signing_key
+            base_url: base_url.to_string(),
+            signing_key: signing_key.clone()
         }
     }
 
     pub fn create_user(&self, username: &str, payment_address: &Address) -> Result<(), (String)> {
-        let result = signed_request(self.signing_key,
+        let result = signed_request(&self.signing_key,
                                     Method::POST,
-                                    self.base_url,
+                                    self.base_url.as_str(),
                                     "/v1/user",
                                     None,
                                     Some(&object!{
@@ -33,7 +33,7 @@ impl<'a> IdService<'a> {
 
     pub fn get_user_by_username(&self, username: &str) -> Result<(JsonValue), (String)> {
         let result = request(Method::GET,
-                             self.base_url,
+                             self.base_url.as_str(),
                              format!("/v1/user/{}", username).as_str(),
                              None,
                              None);

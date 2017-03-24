@@ -135,9 +135,9 @@ impl SessionState {
         our_identity_key: &IdentityKeyPair,
         our_base_key: &ECKeyPair,
         their_identity_key: &ECPublicKey,
-        their_signed_pre_key: &ECPublicKey,
+        their_signed_prekey: &ECPublicKey,
         their_ratchet_key: &ECPublicKey,
-        their_one_time_pre_key: Option<&ECPublicKey>
+        their_one_time_prekey: Option<&ECPublicKey>
     ) {
 
         self.0.set_sessionVersion(CURRENT_VERSION);
@@ -153,10 +153,10 @@ impl SessionState {
         let sending_ratchet_key = ECKeyPair::generate();
 
         let mut secrets: Vec<u8> = vec![0xff; 32];
-        secrets.extend(our_identity_key.get_private_key().calculate_agreement(their_signed_pre_key));
+        secrets.extend(our_identity_key.get_private_key().calculate_agreement(their_signed_prekey));
         secrets.extend(our_base_key.get_private_key().calculate_agreement(their_identity_key));
-        secrets.extend(our_base_key.get_private_key().calculate_agreement(their_signed_pre_key));
-        match their_one_time_pre_key {
+        secrets.extend(our_base_key.get_private_key().calculate_agreement(their_signed_prekey));
+        match their_one_time_prekey {
             Some(key) => {
                 secrets.extend(our_base_key.get_private_key().calculate_agreement(key));
             },
@@ -179,9 +179,9 @@ impl SessionState {
     pub fn initialize_as_bob(
         &mut self,
         our_identity_key: &IdentityKeyPair,
-        our_signed_pre_key: &ECKeyPair,
+        our_signed_prekey: &ECKeyPair,
         our_ratchet_key: &ECKeyPair,
-        our_one_time_pre_key: Option<ECKeyPair>,
+        our_one_time_prekey: Option<ECKeyPair>,
         their_identity_key: &ECPublicKey,
         their_base_key: &ECPublicKey
     ) {
@@ -190,10 +190,10 @@ impl SessionState {
         self.0.set_localIdentityPublic(our_identity_key.get_public_key().serialize().to_vec());
 
         let mut secrets: Vec<u8> = vec![0xff; 32];
-        secrets.extend(our_signed_pre_key.get_private_key().calculate_agreement(their_identity_key));
+        secrets.extend(our_signed_prekey.get_private_key().calculate_agreement(their_identity_key));
         secrets.extend(our_identity_key.get_private_key().calculate_agreement(their_base_key));
-        secrets.extend(our_signed_pre_key.get_private_key().calculate_agreement(their_base_key));
-        match our_one_time_pre_key {
+        secrets.extend(our_signed_prekey.get_private_key().calculate_agreement(their_base_key));
+        match our_one_time_prekey {
             Some(key) => {
                 secrets.extend(key.get_private_key().calculate_agreement(their_base_key));
             },
@@ -219,6 +219,10 @@ impl SessionState {
 
     pub fn set_remote_registration_id(&mut self, registration_id: u32) {
         self.0.set_remoteRegistrationId(registration_id);
+    }
+
+    pub fn get_remote_registration_id(&self) -> u32 {
+        self.0.get_remoteRegistrationId()
     }
 
     pub fn set_alice_base_key(&mut self, base_key: Vec<u8>) {
@@ -624,17 +628,17 @@ impl SessionRecord {
                 &self.state.0.get_remoteIdentityPublic().to_vec()));
 
         let res: Box<CipherTextMessage> = if self.state.0.has_pendingPreKey() {
-            let pending_pre_key = self.state.0.get_pendingPreKey();
-            let prekey_id = if pending_pre_key.has_preKeyId() {
-                Some(pending_pre_key.get_preKeyId())
+            let pending_prekey = self.state.0.get_pendingPreKey();
+            let prekey_id = if pending_prekey.has_preKeyId() {
+                Some(pending_prekey.get_preKeyId())
             } else {
                 None
             };
             Box::new(PreKeySignalMessage::new(
                 session_version, self.state.0.get_localRegistrationId(),
-                prekey_id, Some(pending_pre_key.get_signedPreKeyId() as u32),
+                prekey_id, Some(pending_prekey.get_signedPreKeyId() as u32),
                 &ECPublicKey::deserialize(
-                    &pending_pre_key.get_baseKey().to_vec()),
+                    &pending_prekey.get_baseKey().to_vec()),
                 &ECPublicKey::deserialize(
                     &self.state.0.get_localIdentityPublic().to_vec()),
                 ciphertextmsg))
