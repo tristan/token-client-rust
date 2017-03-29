@@ -4,7 +4,7 @@ extern crate curl;
 extern crate tiny_keccak;
 
 use self::rustc_serialize::base64::{ToBase64, STANDARD};
-use ::eth::{Address,SecretKey};
+use ::eth::{SecretKey};
 use self::curl::easy::{Easy, List};
 use json::JsonValue;
 use json;
@@ -50,6 +50,10 @@ fn do_request(method: Method, base_url: &str, path: &str, mut headers: List, bod
             transfer.perform()
         },
         _ => {
+            match method {
+                Method::DELETE => { easy.custom_request("DELETE").unwrap(); },
+                _ => {}
+            };
             let mut transfer = easy.transfer();
             transfer.write_function(|outdata| {
                 response_data.extend_from_slice(outdata);

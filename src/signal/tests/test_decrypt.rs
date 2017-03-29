@@ -7,7 +7,7 @@ use ::signal::state::{PreKeyRecord, SignedPreKeyRecord};
 use ::signal::message::PreKeySignalMessage;
 use ::signal::protocol::SignalProtocolAddress;
 use ::signal::session::decrypt_prekey_message;
-use ::signal::protocol::{SignalProtocolStore,SignedPreKeyStore,PreKeyStore};
+use ::signal::protocol::{SignalProtocolStore};
 
 #[test]
 fn decrypt_message() {
@@ -87,7 +87,7 @@ fn decrypt_message() {
                     0x85, 0xb1, 0xa3, 0xed, 0x01, 0xae, 0xd3, 0xa6, 0x64, 0xcb, 0xa8, 0x8c, 0xa7, 0x46, 0x10, 0x5c,
                     0x1d, 0x62, 0xa4, 0xbf, 0x2a, 0x09, 0x1a, 0x1c, 0xc0, 0xe5, 0x01, 0xe3, 0xa4, 0x74, 0x8b, 0x93,
                     0xc3, 0x4e, 0x06]);
-    let remote_address = SignalProtocolAddress::new("0x946377c114849aaa1b08deae139d481df6974519".to_string(), 1);
+    let remote_address = SignalProtocolAddress::new("0x946377c114849aaa1b08deae139d481df6974519", 1);
 
     let idkey = IdentityKeyPair::deserialize(&vec![
         0x0a, 0x21, 0x05, 0x1e, 0x3d, 0xda, 0x2a, 0x49, 0x35, 0x21, 0xa0, 0x60, 0x3a, 0x34, 0x25, 0x99,
@@ -97,8 +97,6 @@ fn decrypt_message() {
         0x30, 0x2e, 0x4f, 0x8c, 0x61]);
 
     let mut store = new_protocol_store!(TestProtocolStore::new(&idkey, 10267));
-
-    let our_address = SignalProtocolAddress::new("0x1d23733a6422b83be138d83dcd1746ad8f90dd04".to_string(), 1);
 
     let signedprekey = SignedPreKeyRecord::deserialize(&vec![
         0x08, 0x00, 0x12, 0x21, 0x05, 0xd7, 0xdf, 0x01, 0x29, 0x6b, 0x22, 0x1b, 0x64, 0xab, 0x8a, 0x4e,

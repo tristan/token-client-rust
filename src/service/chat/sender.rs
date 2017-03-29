@@ -88,12 +88,12 @@ impl ChatService {
 
     fn get_encrypted_message(&mut self, recipient: &Address, device_id: u32, plaintext: &[u8]) -> Result<EncryptedMessageResult,String> {
 
-        let addr = SignalProtocolAddress::new(recipient.to_string(), device_id);
+        let addr = SignalProtocolAddress::new(&recipient.to_string(), device_id);
         if ! self.store.contains_session(&addr) {
             match self.get_prekeys(recipient, device_id) {
                 Ok(bundles) => {
                     for bundle in bundles.iter() {
-                        let remote_addr = SignalProtocolAddress::new(recipient.to_string(), bundle.get_device_id());
+                        let remote_addr = SignalProtocolAddress::new(&recipient.to_string(), bundle.get_device_id());
                         match self.store.process_prekey_bundle(&remote_addr, &bundle) {
                             Ok(_) => {},
                             Err(e) => {
@@ -267,7 +267,7 @@ mod tests {
         let bob_token_id = eth::Address::from_string("0x6ae8cd08d623d34bddbeea4ea29131b4bc7b11f5");
 
         //let alice_address = SignalProtocolAddress::new(alice_token_id.to_string(), 1);
-        let bob_address = SignalProtocolAddress::new(bob_token_id.to_string(), 1);
+        let bob_address = SignalProtocolAddress::new(&bob_token_id.to_string(), 1);
 
         let alice_identity_keypair = IdentityKeyPair::deserialize(&vec![
             0x0a, 0x21, 0x05, 0x1e, 0x3d, 0xda, 0x2a, 0x49, 0x35, 0x21, 0xa0, 0x60, 0x3a, 0x34, 0x25, 0x99,

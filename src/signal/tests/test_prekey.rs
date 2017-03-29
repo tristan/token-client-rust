@@ -3,10 +3,10 @@ use super::test_protocol_store::TestProtocolStore;
 use ::signal::keys::{IdentityKeyPair,ECKeyPair};
 use ::signal::state::{PreKeyRecord,SignedPreKeyRecord,PreKeyBundle};
 
-use ::signal::message::{CipherTextMessage,MessageType,PreKeySignalMessage,SignalMessage};
+use ::signal::message::{MessageType,PreKeySignalMessage,SignalMessage};
 use ::signal::protocol::SignalProtocolAddress;
 use ::signal::session;
-use ::signal::protocol::{SessionStore,SignedPreKeyStore,PreKeyStore,IdentityKeyStore,SignalProtocolStoreImpl,SignalProtocolStore};
+use ::signal::protocol::{SignalProtocolStore};
 
 use rand::{OsRng, Rng};
 
@@ -15,10 +15,10 @@ fn test_basic_prekey_v3() {
 
     let mut rng = OsRng::new().ok().unwrap();
 
-    let alice_address = SignalProtocolAddress::new("0x946377c114849aaa1b08deae139d481df6974519".to_string(), 1);
+    let alice_address = SignalProtocolAddress::new("0x946377c114849aaa1b08deae139d481df6974519", 1);
     let alice_identity_keypair = IdentityKeyPair::generate();
     let alice_registration_id = rng.gen_range(1, 16381);
-    let bob_address = SignalProtocolAddress::new("0x1d23733a6422b83be138d83dcd1746ad8f90dd04".to_string(), 1);
+    let bob_address = SignalProtocolAddress::new("0x1d23733a6422b83be138d83dcd1746ad8f90dd04", 1);
     let bob_identity_keypair = IdentityKeyPair::generate();
     let bob_registration_id = rng.gen_range(1, 16381);
 

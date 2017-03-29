@@ -3,7 +3,7 @@ extern crate crypto;
 extern crate protobuf;
 
 use signal::LocalStorageProtocol;
-use signal::curve::{curve25519_sign, curve25519_verify};
+use signal::curve::{curve25519_sign};
 use protobuf::{Message};
 
 use std;

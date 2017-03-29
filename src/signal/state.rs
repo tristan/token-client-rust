@@ -2,7 +2,7 @@ extern crate time;
 
 use ::signal::keys::{ECPrivateKey,ECPublicKey,ECKeyPair,IdentityKeyPair};
 use ::signal::LocalStorageProtocol;
-use ::signal::curve::{curve25519_sign, curve25519_verify};
+use ::signal::curve::{curve25519_verify};
 use protobuf::{Message};
 
 #[derive(Clone)]
@@ -215,7 +215,7 @@ impl SignedPreKeyRecord {
 }
 
 #[cfg(test)]
-fn test() {
+mod tests {
 
     use super::*;
 

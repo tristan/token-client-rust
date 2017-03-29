@@ -1,5 +1,5 @@
 use ::eth::{SecretKey};
-use super::{request,signed_request,Method};
+use super::{signed_request,Method};
 
 pub struct ReputationService<'a> {
     base_url: &'static str,

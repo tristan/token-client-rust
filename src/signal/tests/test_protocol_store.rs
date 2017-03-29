@@ -2,7 +2,6 @@
 use ::signal::keys::{IdentityKeyPair,ECPublicKey};
 use ::signal::state::{PreKeyRecord, SignedPreKeyRecord};
 use ::signal::protocol;
-use ::signal::session;
 use ::signal::ratchet::SessionRecord;
 
 use std::collections::HashMap;

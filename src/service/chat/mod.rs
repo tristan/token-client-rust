@@ -1,5 +1,5 @@
 use ::eth::{Address,SecretKey};
-use ::signal::protocol::{SignalProtocolStore,SignalProtocolStoreRef};
+use ::signal::protocol::{SignalProtocolStore};
 use ::signal::keys::{IdentityKeyPair};
 use ::signal::state::{PreKeyRecord, SignedPreKeyRecord};
 use super::{request,signed_request,Method};
@@ -118,6 +118,5 @@ impl ChatService {
     }
 }
 
-mod base64;
 mod sender;
 mod receiver;

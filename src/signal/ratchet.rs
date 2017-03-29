@@ -31,16 +31,16 @@ macro_rules! derive_secrets {
     };
 }
 
-enum KeyTypes {
-    AES,
-    HmacSHA256,
-}
+// enum KeyTypes {
+//     AES,
+//     HmacSHA256,
+// }
 
 struct MessageKeys {
     cipher_key: Vec<u8>,
-    cipher_key_type: KeyTypes,
+    //cipher_key_type: KeyTypes,
     mac_key: Vec<u8>,
-    mac_key_type: KeyTypes,
+    //mac_key_type: KeyTypes,
     iv: Vec<u8>,
     counter: u32
 }
@@ -81,9 +81,9 @@ impl ChainKey {
         let iv = key_material_bytes[64..80].to_vec();
         MessageKeys {
             cipher_key: cipher_key,
-            cipher_key_type: KeyTypes::AES,
+            //cipher_key_type: KeyTypes::AES,
             mac_key: mac_key,
-            mac_key_type: KeyTypes::HmacSHA256,
+            //mac_key_type: KeyTypes::HmacSHA256,
             iv: iv,
             counter: self.index
         }
@@ -426,14 +426,14 @@ impl SessionState {
         }
     }
 
-    pub fn get_sender_chain_key(&self) -> ChainKey {
+    fn get_sender_chain_key(&self) -> ChainKey {
         let chainkey = self.0.get_senderChain().get_chainKey();
         ChainKey::create(self.get_session_version(),
                          &chainkey.get_key().to_vec(),
                          chainkey.get_index())
     }
 
-    pub fn set_sender_chain_key(&mut self, chainkey: &ChainKey) {
+    fn set_sender_chain_key(&mut self, chainkey: &ChainKey) {
         let mut cks = LocalStorageProtocol::SessionStructure_Chain_ChainKey::new();
         cks.set_key(chainkey.key.to_vec());
         cks.set_index(chainkey.index);
@@ -472,9 +472,9 @@ impl SessionState {
                 let message_key = message_key_list.remove(index);
                 return Some(MessageKeys {
                     cipher_key: message_key.get_cipherKey().to_vec(),
-                    cipher_key_type: KeyTypes::AES,
+                    //cipher_key_type: KeyTypes::AES,
                     mac_key: message_key.get_macKey().to_vec(),
-                    mac_key_type: KeyTypes::HmacSHA256,
+                    //mac_key_type: KeyTypes::HmacSHA256,
                     iv: message_key.get_iv().to_vec(),
                     counter: message_key.get_index()
                 });
@@ -652,6 +652,10 @@ impl SessionRecord {
         Ok(res)
     }
 
+    pub fn get_session_version(&self) -> u32 {
+        self.state.0.get_sessionVersion()
+    }
+
     pub fn has_session_state(&self, version: u32, alice_base_key: &Vec<u8>) -> bool {
         if self.state.0.get_sessionVersion() == version && self.state.0.get_aliceBaseKey() == &alice_base_key[..] {
             return true;
@@ -690,6 +694,8 @@ impl SessionRecord {
 mod tests {
 
     use super::*;
+    use protobuf;
+    use ::signal::state::*;
 
     #[test]
     fn test_chain_key_message_key_generation() {
@@ -709,10 +715,6 @@ mod tests {
         assert_eq!(messagekeys.iv, vec![0xa1, 0x84, 0x23, 0xd0, 0x0f, 0xd6, 0xd0, 0x2e, 0x9e, 0x6c, 0x27, 0x32, 0xf1, 0xa5, 0x15, 0x9a]);
         assert_eq!(messagekeys.counter, 0);
     }
-
-    use protobuf;
-    use super::*;
-    use ::signal::state::*;
 
     #[test]
     fn test_initialise_as_alice() {

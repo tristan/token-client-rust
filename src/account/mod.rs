@@ -1,5 +1,4 @@
 use eth;
-use rand;
 use rand::{OsRng, Rng};
 use signal::keys::IdentityKeyPair;
 use signal::protocol::{SignalProtocolStore};
@@ -36,10 +35,8 @@ impl Account {
 
         // generate token_id
         let private_key = eth::generate_secret_key();
-        let token_id = private_key.address();
 
         // signal details
-
         // generate random password
         let password: String = rng.gen_iter::<char>()
             .take(16)

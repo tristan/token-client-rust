@@ -388,8 +388,8 @@ mod tests {
         let kp2 = IdentityKeyPair::generate();
         // clone kp to test we're not just comparing references
         let kp3 = IdentityKeyPair::deserialize(&kp.serialize());
-        let addr = SignalProtocolAddress::new("0x1234567890123456789012345678901234567890".to_string(), 1);
-        let addr3 = SignalProtocolAddress::new("0x1234567890123456789012345678901234567890".to_string(), 1);
+        let addr = SignalProtocolAddress::new("0x1234567890123456789012345678901234567890", 1);
+        let addr3 = SignalProtocolAddress::new("0x1234567890123456789012345678901234567890", 1);
         assert_eq!(idstore.is_trusted_identity(&addr, &kp.get_public_key()), true);
         idstore.store_identity(&addr, &kp.get_public_key());
         assert_eq!(idstore.is_trusted_identity(&addr, &kp.get_public_key()), true);

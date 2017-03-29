@@ -12,7 +12,7 @@ use std::fmt;
 
 pub enum SignalError {
     UntrustedIdentity,
-    InvalidKeyId,
+    //InvalidKeyId,
     NoValidSessions,
     UninitializedSession,
     MessageVersionMismatch,
@@ -27,7 +27,7 @@ impl fmt::Debug for SignalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let msg = match *self {
             SignalError::UntrustedIdentity => "Untrusted Identity",
-            SignalError::InvalidKeyId => "Invalid Key ID",
+            //SignalError::InvalidKeyId => "Invalid Key ID",
             SignalError::NoValidSessions => "No Valid Sessions",
             SignalError::UninitializedSession => "Uninitialized Session",
             SignalError::MessageVersionMismatch => "Message Version Mismatch",
@@ -50,9 +50,9 @@ pub struct SignalProtocolAddress {
 impl Eq for SignalProtocolAddress {}
 
 impl SignalProtocolAddress {
-    pub fn new(address: String, device_id: u32) -> SignalProtocolAddress {
+    pub fn new(address: &str, device_id: u32) -> SignalProtocolAddress {
         SignalProtocolAddress {
-            address: address,
+            address: address.to_string(),
             device_id: device_id
         }
     }
@@ -333,6 +333,7 @@ mod tests {
             fn get_local_registration_id(&self) -> u32 {
                 0
             }
+            #[allow(unused_variables)]
             fn store_identity(&mut self, address: &SignalProtocolAddress, identity_key: &ECPublicKey) {
                 self.saved = true;
             }
@@ -348,8 +349,8 @@ mod tests {
         let kp = IdentityKeyPair::generate();
         let kp2 = IdentityKeyPair::generate();
         let kp3 = IdentityKeyPair::deserialize(&kp.serialize());
-        let addr = SignalProtocolAddress::new("0x1234567890123456789012345678901234567890".to_string(), 1);
-        let addr2 = SignalProtocolAddress::new("0x1234567890123456789012345678901234567890".to_string(), 1);
+        let addr = SignalProtocolAddress::new("0x1234567890123456789012345678901234567890", 1);
+        let addr2 = SignalProtocolAddress::new("0x1234567890123456789012345678901234567890", 1);
         let mut idstore = IdStore { addr: &addr, identity_key: kp.get_public_key(), id_keypair: IdentityKeyPair::generate(), saved: false };
         assert_eq!(idstore.is_trusted_identity(&addr, &kp.get_public_key()), true);
         assert_eq!(idstore.is_trusted_identity(&addr, &kp2.get_public_key()), true);

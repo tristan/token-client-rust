@@ -137,14 +137,19 @@ fn main() {
             SQLiteProtocolStore::new(&get_account_db_name!(user.get_username()),
                                      user.get_identity_keypair(),
                                      user.get_registration_id()));
-        let cs = service::chat::ChatService::new(
+        let mut cs = service::chat::ChatService::new(
             &mut store,
             TOKEN_CHAT_SERVICE_URL, &user.get_private_key(),
             user.get_token_id(), &user.get_password());
         let result = cs.get_messages();
         match result {
-            Ok(data) => {
-                println!("{:#}", data);
+            Ok(messages) => {
+                if messages.len() == 0 {
+                    println!("No new messages");
+                }
+                for message in messages {
+                    println!("{}", message);
+                }
             },
             Err(e) => {
                 println!("{:?}", e);
