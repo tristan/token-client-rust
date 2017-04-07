@@ -8,7 +8,7 @@ pub mod message;
 pub mod protocol;
 pub mod ratchet;
 pub mod state;
-mod cipher;
+pub mod cipher;
 pub mod LocalStorageProtocol;
 pub mod WhisperTextProtocol;
 pub mod SignalService;

@@ -45,8 +45,6 @@ pub fn decrypt_whisper_message(store: &mut SignalProtocolStore,
     plaintext
 }
 
-pub fn
-
 pub fn encrypt_message(store: &mut SignalProtocolStore,
                        remote_address: &SignalProtocolAddress,
                        plaintext: &Vec<u8>)

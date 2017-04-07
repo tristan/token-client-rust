@@ -1,7 +1,7 @@
 use super::ChatService;
 use super::{request,signed_request,Method};
 use ::eth::{Address};
-use ::signal::protocol::{SignalProtocolAddress, SignalProtocolStore};
+use ::signal::protocol::{SignalProtocolAddress};
 use ::signal::state::PreKeyBundle;
 use ::signal::keys::ECPublicKey;
 use ::signal::message::{MessageType,PreKeySignalMessage,SignalMessage,DataMessage};

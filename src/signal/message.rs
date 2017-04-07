@@ -88,7 +88,7 @@ impl SignalMessage {
         }
     }
 
-    pub fn deserialize(serialized: &Vec<u8>) -> Result<SignalMessage, String> {
+    pub fn deserialize(serialized: &[u8]) -> Result<SignalMessage, String> {
 
         let version = high_bits_to_int(serialized[0]);
         let (message, mac) = serialized[1..].split_at(serialized.len() - 1 - MAC_LENGTH);
@@ -209,7 +209,7 @@ impl PreKeySignalMessage {
         }
     }
 
-    pub fn deserialize(serialized: &Vec<u8>) -> Result<PreKeySignalMessage, String> {
+    pub fn deserialize(serialized: &[u8]) -> Result<PreKeySignalMessage, String> {
 
         let version = high_bits_to_int(serialized[0]);
 

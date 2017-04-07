@@ -37,6 +37,7 @@ struct Args {
     cmd_messages: bool,
     cmd_debug: bool,
     cmd_dump: bool,
+    cmd_websocket: bool,
     arg_target: String,
     arg_rating: Option<f32>
 }
@@ -48,6 +49,7 @@ Usage:
   token_client <username> messages
   token_client <username> info <target>
   token_client <username> review <recipient> <rating> <message>
+  token_client <username> websocket
   token_client <username> debug dump
 ";
 
@@ -199,5 +201,24 @@ fn main() {
         println!("{}", user.get_token_id().to_string());
         println!("{}", user.get_registration_id());
         //println!("{:?}", user.get_signaling_key());
+    }
+
+    if args.cmd_websocket {
+        let mut store = new_protocol_store!(
+            SQLiteProtocolStore::new(&get_account_db_name!(user.get_username()),
+                                     user.get_identity_keypair(),
+                                     user.get_registration_id()));
+        if let Err(error) = service::chat::ChatService::new(
+            &mut store,
+            TOKEN_CHAT_SERVICE_URL, &user.get_private_key(),
+            user.get_token_id(), &user.get_password()).websocket_connect(
+            user.get_signaling_key(),
+            |msg| {
+                println!("{}", msg);
+            }
+        ) {
+
+            println!("ERROR: {}", error);
+        };
     }
 }

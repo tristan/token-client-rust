@@ -2,7 +2,6 @@ extern crate time;
 
 use ::signal::keys::{ECPrivateKey,ECPublicKey,ECKeyPair,IdentityKeyPair};
 use ::signal::LocalStorageProtocol;
-use ::signal::curve::{curve25519_verify};
 use protobuf::{Message};
 
 #[derive(Clone)]

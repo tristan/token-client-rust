@@ -3,6 +3,18 @@ extern crate crypto;
 use self::crypto::{symmetriccipher, buffer, aes, blockmodes};
 use self::crypto::buffer::{ReadBuffer, WriteBuffer, BufferResult};
 use self::crypto::symmetriccipher::{Decryptor,Encryptor};
+use self::crypto::mac::Mac;
+use self::crypto::hmac::Hmac;
+use self::crypto::sha2::Sha256;
+
+pub const IV_OFFSET: usize = 1;
+pub const IV_LENGTH: usize = 16;
+pub const CIPHER_KEY_SIZE: usize = 32;
+pub const MAC_SIZE: usize = 10;
+//pub const MAC_KEY_SIZE: usize = 20;
+pub const CIPHERTEXT_OFFSET: usize = IV_OFFSET + IV_LENGTH;
+//pub const VERSION_OFFSET: usize = 0;
+pub const VERSION_LENGTH: usize = 1;
 
 // taken from https://github.com/DaGenix/rust-crypto/blob/master/examples/symmetriccipher.rs
 pub fn decrypt_cbc(encrypted_data: &[u8], key: &[u8], iv: &[u8])
@@ -117,11 +129,22 @@ pub fn encrypt_ctr(data: &[u8], key: &[u8], counter: u32) -> Result<Vec<u8>, sym
     Ok(final_result)
 }
 
+pub fn verify_mac(ciphertext: &[u8], mac_key: &[u8]) -> bool {
+    let mut mac = Hmac::new(Sha256::new(), &mac_key);
+    if ciphertext.len() < MAC_SIZE + 1 {
+        panic!("Invalid MAC!");
+    }
+    mac.input(&ciphertext[..(ciphertext.len() - MAC_SIZE)]);
+    let thismac = mac.result().code()[..MAC_SIZE].to_vec();
+    let thatmac = ciphertext[(ciphertext.len() - MAC_SIZE)..].to_vec();
+    thismac == thatmac
+}
+
 #[cfg(test)]
 mod tests {
 
     use super::*;
-    
+
     #[test]
     fn test_encrypt_cbc() {
         let plaintext = "L'homme est condamné à être libre".as_bytes();
