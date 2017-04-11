@@ -207,7 +207,7 @@ impl ChatService {
                     //     return Err(format!("Bad Type: {:?}", msg.get_type()));
                     // }
                 };
-                println!("{:?}", serialized);
+                //println!("{:?}", serialized);
                 Ok(EncryptedMessageResult(msg_type, destination.get_device_id(), remote_version, serialized.to_base64(STANDARD)))
             },
             Err(e) => {
@@ -256,8 +256,9 @@ fn create_prekey_bundle(result: &json::JsonValue, device: &json::JsonValue) -> R
 mod tests {
 
     use super::*;
-    use ::signal::tests::test_protocol_store::TestProtocolStore;
-    use ::signal::keys::{IdentityKeyPair};
+    use signal::tests::test_protocol_store::TestProtocolStore;
+    use signal::keys::{IdentityKeyPair};
+    use signal::protocol::SignalProtocolStore;
     use eth;
 
     #[test]

@@ -218,6 +218,8 @@ mod tests {
 
     use super::*;
 
+    use signal::curve::curve25519_verify;
+
     #[test]
     fn generate_prekey_records() {
         PreKeyRecord::generate_prekeys(0, 100);

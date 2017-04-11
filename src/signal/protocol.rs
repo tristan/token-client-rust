@@ -315,7 +315,7 @@ macro_rules! new_protocol_store { ($store:expr) => (SignalProtocolStore::new(Box
 mod tests {
 
     use super::*;
-    use ::signal::keys::IdentityKeyPair;
+    use signal::keys::IdentityKeyPair;
 
     #[test]
     fn test_identity_store_trait() {
