@@ -1,48 +1,30 @@
 extern crate bigint;
 extern crate rlp;
 extern crate tiny_keccak;
-extern crate secp256k1;
+
+use secp256k1;
 
 use std;
 use self::tiny_keccak::Keccak;
 use rand::{thread_rng, Rng};
 use rustc_serialize::hex::FromHex;
 use self::bigint::U256;
-use self::bigint::Uint;
+//use self::bigint::uint;
 
 lazy_static! {
-	static ref SECP256K1: secp256k1::Secp256k1 = secp256k1::Secp256k1::new();
-}
-
-// TODO: remove duplicate macros
-macro_rules! impl_lower_hex_fmt {
-    ($x:ty) => {
-        impl std::fmt::LowerHex for $x {
-            fn fmt(&self, fmtr: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-                for byte in self.0.to_vec() {
-                    try!(fmtr.write_fmt(format_args!("{:02x}", byte)));
-                }
-                Ok(())
-            }
-        }
-    };
-}
-
-macro_rules! impl_to_vec {
-    ($x:ty) => {
-        impl $x {
-            pub fn to_vec(&self) -> std::vec::Vec<u8> {
-                self.0.to_vec()
-            }
-        }
-    };
+    pub static ref SECP256K1: secp256k1::Secp256k1 = secp256k1::Secp256k1::new();
 }
 
 #[derive(Clone)]
 pub struct SecretKey([u8;32]);
+impl_array_struct!(SecretKey, u8, 32);
+
 #[derive(Clone,PartialEq,Debug)]
 pub struct Address([u8;20]);
+impl_array_struct!(Address, u8, 20);
+
 pub struct Signature([u8;65]);
+impl_array_struct!(Signature, u8, 65);
 
 impl std::cmp::PartialEq for Signature {
     fn eq(&self, rhs: &Signature) -> bool {
@@ -68,12 +50,6 @@ impl Signature {
         (v, r, s)
     }
 }
-
-// TODO: look at replacing these with custom #[derive(...)]
-impl_lower_hex_fmt!(Address);
-impl_lower_hex_fmt!(Signature);
-impl_lower_hex_fmt!(SecretKey);
-impl_to_vec!(Signature);
 
 impl Address {
     pub fn to_string(&self) -> String {
@@ -109,12 +85,6 @@ impl SecretKey {
 
     pub fn serialize(&self) -> Vec<u8> {
         self.0.to_vec()
-    }
-
-    pub fn deserialize(serialised: &Vec<u8>) -> SecretKey {
-        let mut res: [u8;32] = [0;32];
-        res.copy_from_slice(&serialised);
-        SecretKey(res)
     }
 
     pub fn sign(&self, data: &[u8]) -> Signature {
@@ -292,7 +262,7 @@ mod tests {
 
     use super::*;
     use std::str::FromStr;
-    use super::bigint::Uint;
+    //use super::bigint::Uint;
 
     #[test]
     fn test_crypto_sign_modified() {

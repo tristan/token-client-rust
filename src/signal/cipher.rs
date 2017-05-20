@@ -6,6 +6,7 @@ use self::crypto::symmetriccipher::{Decryptor,Encryptor};
 use self::crypto::mac::Mac;
 use self::crypto::hmac::Hmac;
 use self::crypto::sha2::Sha256;
+use ::helpers::int_to_byte_array;
 
 pub const IV_OFFSET: usize = 1;
 pub const IV_LENGTH: usize = 16;
@@ -40,15 +41,6 @@ pub fn decrypt_cbc(encrypted_data: &[u8], key: &[u8], iv: &[u8])
     }
 
     Ok(final_result)
-}
-
-fn int_to_byte_array(value: u32) -> [u8;4] {
-    let mut bytes: [u8;4] = [0;4];
-    bytes[3] = value as u8;
-    bytes[2] = (value >> 8) as u8;
-    bytes[1] = (value >> 16) as u8;
-    bytes[0] = (value >> 24) as u8;
-    bytes
 }
 
 pub fn decrypt_ctr(encrypted_data: &[u8], key: &[u8], counter: u32)

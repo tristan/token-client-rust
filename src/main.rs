@@ -11,12 +11,19 @@ extern crate lazy_static;
 #[macro_use]
 extern crate json;
 
+#[macro_use]
+extern crate secp256k1;
+
+#[macro_use]
+mod helpers;
+
 mod account;
 mod eth;
 #[macro_use]
 mod signal;
 mod service;
 mod storage;
+mod wallet;
 
 use signal::protocol::SignalProtocolStore;
 use account::Account;
