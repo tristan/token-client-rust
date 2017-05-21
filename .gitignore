@@ -2,4 +2,4 @@ target/
 Cargo.lock
 *.db
 .cargo/
-parity/
+src/protobuf/*.rs

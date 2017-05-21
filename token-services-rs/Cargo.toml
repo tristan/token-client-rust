@@ -1,0 +1,25 @@
+[package]
+name = "token-services"
+version = "0.1.0"
+authors = ["Tristan King <tristan.king@gmail.com>"]
+build = "build.rs"
+
+[dependencies]
+mod_path = { path = "../mod_path" }
+protobuf = "*"
+rustc-serialize = "*"
+time = "*"
+tiny-keccak = "*"
+curl = "*"
+json = "*"
+url = "*"
+openssl = "*"
+eth = { path = "../eth-rs" }
+signal = { path = "../signal-rs" }
+
+[dependencies.ws]
+version = "*"
+features = ["ssl"]
+
+[build-dependencies.protobuf_build]
+git = "https://github.com/plietar/rust-protobuf-build"

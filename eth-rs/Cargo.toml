@@ -1,0 +1,15 @@
+[package]
+name = "eth"
+version = "0.1.0"
+authors = ["Tristan King <tristan.king@gmail.com>"]
+
+[dependencies]
+rand = "*"
+rustc-serialize = "*"
+lazy_static = "*"
+bigint = { git = "https://github.com/paritytech/bigint", rev = "0ab6d5c3" }
+rlp = { path = "../rlp-rs" }
+bip39 = "*"
+tiny-keccak = "*"
+secp256k1 = "*"
+rust-crypto = "*"

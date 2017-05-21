@@ -1,0 +1,16 @@
+[package]
+description = "Recursive-length prefix encoding, decoding, and compression"
+license = "MIT"
+name = "rlp"
+version = "0.2.1"
+authors = ["Parity Technologies <admin@parity.io>", "Tristan King <tristan.king@gmail.com>"]
+
+[dependencies]
+elastic-array = "0.7.0"
+bigint = { git = "https://github.com/paritytech/bigint", rev = "0ab6d5c3" }
+lazy_static = "0.2"
+rustc-serialize = "0.3"
+byteorder = "1.0"
+
+[dependencies.bighash]
+path = "../bighash"

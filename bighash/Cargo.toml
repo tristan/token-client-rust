@@ -1,0 +1,11 @@
+[package]
+name = "bighash"
+version = "0.1.0"
+authors = ["Tristan King <tristan@bakkenbaeck.no>"]
+
+[dependencies]
+heapsize = "0.3"
+libc = "0.2"
+rustc-serialize = "0.3"
+rand = "0.3.12"
+bigint = { git = "https://github.com/paritytech/bigint", rev = "0ab6d5c3" }
