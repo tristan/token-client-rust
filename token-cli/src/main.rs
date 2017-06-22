@@ -1,6 +1,8 @@
 #![feature(plugin)]
 #![plugin(mod_path)]
 
+#[macro_use]
+extern crate serde_derive;
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate rand;
@@ -28,8 +30,9 @@ use docopt::Docopt;
 use token_services as service;
 use signal::protocol::SignalProtocolStore;
 use signal::sqlite_store::SQLiteProtocolStore;
+use signal::message::TokenMessage;
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 struct Args {
     arg_username: String,
     arg_recipient: String,
@@ -67,7 +70,7 @@ macro_rules! get_account_db_name{($username:expr) => (format!("user_{}.db", $use
 fn main() {
 
     let args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.decode())
+        .and_then(|d| d.deserialize())
         .unwrap_or_else(|e| e.exit());
     //println!("{:?}", args);
 
