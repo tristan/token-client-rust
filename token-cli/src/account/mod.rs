@@ -102,6 +102,19 @@ impl Account {
         Ok(())
     }
 
+    pub fn create(&self, store: &mut SignalProtocolStore, chat_service_url: &str) -> Result<(), String> {
+        match service::chat::ChatService::new(
+            store, chat_service_url,
+            &self.private_key, &self.token_id, &self.password)
+            .create_account(self.registration_id, &self.signaling_key) {
+                Ok(_) => {},
+                Err(e) => {
+                    return Err(format!("Unable to create user: {:?}", e));
+                }
+            };
+        Ok(())
+    }
+
     pub fn get_username(&self) -> &String {
         &self.username
     }

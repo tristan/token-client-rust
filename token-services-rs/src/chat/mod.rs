@@ -17,6 +17,9 @@ pub struct ChatService {
     password: String
 }
 
+#[allow(dead_code)]
+pub enum PushServiceType { APN, GCM }
+
 impl ChatService {
     pub fn new(store: &SignalProtocolStore, base_url: &str, signing_key: &SecretKey, token_id: &Address, password: &str) -> ChatService {
         ChatService {
@@ -100,9 +103,36 @@ impl ChatService {
                                         "signalingKey" => signaling_key.to_base64(STANDARD),
                                         "registrationId" => registration_id,
                                         "voice" => false,
-                                        "video" => false,
+                                        "name" => self.signing_key.address().to_string(),
+                                        //"video" => false,
                                         "fetchesMessages" => true
                                     }));
+        match result {
+            Ok(val) => {
+                match val {
+                    None => {
+                        Ok(())
+                    },
+                    Some(val) => {
+                        // 204 is expected, so this means there's an error
+                        Err(val.to_string())
+                    }
+                }
+            },
+            Err(e) => Err(e)
+        }
+    }
+
+    pub fn deregister_push_notifications(&self, service: PushServiceType) -> Result<(), String> {
+        let result = signed_request(&self.signing_key,
+                                    Method::DELETE,
+                                    self.base_url.as_str(),
+                                    match service {
+                                        PushServiceType::APN => "/v1/accounts/apn/",
+                                        PushServiceType::GCM => "/v1/accounts/gcm/"
+                                    },
+                                    Some(self.get_base_headers()),
+                                    None);
         match result {
             Ok(val) => {
                 match val {

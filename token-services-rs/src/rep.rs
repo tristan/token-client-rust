@@ -30,4 +30,17 @@ impl<'a> ReputationService<'a> {
             Err(e) => Err(e)
         }
     }
+
+    pub fn reporcess_all_reviews(&self) -> Result<(), (String)> {
+        let result = signed_request(self.signing_key,
+                                    Method::POST,
+                                    self.base_url,
+                                    "/v1/admin/reprocess",
+                                    None,
+                                    None);
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e)
+        }
+    }
 }

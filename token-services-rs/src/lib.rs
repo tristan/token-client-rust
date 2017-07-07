@@ -141,7 +141,6 @@ fn signed_request(signing_key: &SecretKey, method: Method, base_url: &str, path:
     // println!("URL: {}{}", base_url, path);
     // println!("data: {}", data);
 
-
     // set headers
     let mut list = match headers {
         Some(list) => list,

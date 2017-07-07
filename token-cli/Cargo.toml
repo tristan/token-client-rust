@@ -3,6 +3,7 @@ name = "token-cli"
 version = "0.1.0"
 authors = ["Tristan King <tristan.king@gmail.com>"]
 build = "build.rs"
+exclude = ["*.db"]
 
 [dependencies]
 mod_path = { path = "../mod_path" }
