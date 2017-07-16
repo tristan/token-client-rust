@@ -139,7 +139,7 @@ impl PreKeyStore for SQLiteProtocolStore {
     fn store_prekey(&mut self, prekey_id: u32, record: &PreKeyRecord) {
         let con = self.open();
         let res = con.execute(
-            "INSERT INTO prekey_store (prekey_id, record)
+            "INSERT OR REPLACE INTO prekey_store (prekey_id, record)
              VALUES ($1, $2)",
             &[&prekey_id, &record.serialize()]);
         match res {
@@ -260,7 +260,7 @@ impl SignedPreKeyStore for SQLiteProtocolStore {
     fn store_signed_prekey(&mut self, id: u32, record: &SignedPreKeyRecord) {
         let con = self.open();
         let res = con.execute(
-            "INSERT INTO signed_prekey_store (signed_prekey_id, record)
+            "INSERT OR REPLACE INTO signed_prekey_store (signed_prekey_id, record)
              VALUES ($1, $2)",
             &[&id, &record.serialize()]);
         match res {

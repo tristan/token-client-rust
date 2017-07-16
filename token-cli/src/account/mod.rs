@@ -115,6 +115,36 @@ impl Account {
         Ok(())
     }
 
+    pub fn refresh_keys(&self, store: &mut SignalProtocolStore, chat_service_url: &str) -> Result<(), String> {
+        // generate keys for new user
+        let prekeys = PreKeyRecord::generate_prekeys(0, 100);
+        // TODO: this seems to be what the java client always sets, figure out why
+        let last_resort_key = PreKeyRecord::generate(16777215);
+        let signed_prekey_record = SignedPreKeyRecord::generate(0, &self.identity_keypair);
+        match service::chat::ChatService::new(
+            store, chat_service_url,
+            &self.private_key, &self.token_id, &self.password)
+            .bootstrap_account(&self.identity_keypair,
+                               &last_resort_key,
+                               &prekeys,
+                               &signed_prekey_record,
+                               self.registration_id,
+                               &self.signaling_key) {
+                Ok(_) => {},
+                Err(e) => {
+                    return Err(format!("Unable to create user: {:?}", e));
+                }
+            };
+
+        for key in prekeys {
+            store.store_prekey(key.get_id(), &key);
+        }
+        store.store_prekey(last_resort_key.get_id(), &last_resort_key);
+        store.store_signed_prekey(signed_prekey_record.get_id(), &signed_prekey_record);
+
+        Ok(())
+    }
+
     pub fn get_username(&self) -> &String {
         &self.username
     }

@@ -29,7 +29,7 @@ use docopt::Docopt;
 
 // alias token_servies
 use token_services as service;
-use signal::protocol::SignalProtocolStore;
+use signal::protocol::{SignalProtocolStore, SignalProtocolAddress};
 use signal::sqlite_store::SQLiteProtocolStore;
 use signal::message::TokenMessage;
 
@@ -41,6 +41,7 @@ struct Args {
     cmd_message: bool,
     cmd_review: bool,
     cmd_create: bool,
+    cmd_refresh_keys: bool,
     cmd_info: bool,
     cmd_messages: bool,
     cmd_debug: bool,
@@ -60,12 +61,18 @@ struct Args {
 
     cmd_pay: bool,
     cmd_fakepay: bool,
-    arg_ether: Option<f64>
+    arg_ether: Option<f64>,
+
+    cmd_reset_session: bool,
+    cmd_generate_mnemonic: bool
 }
 
 const USAGE: &'static str = "
 Usage:
+  token_client generate-mnemonic
   token_client <username> create
+  token_client <username> refresh-keys
+  token_client <username> reset-session <recipient>
   token_client <username> message <recipient> <message>
   token_client <username> messages
   token_client <username> info <target>
@@ -103,6 +110,12 @@ fn main() {
         .and_then(|d| d.deserialize())
         .unwrap_or_else(|e| e.exit());
     //println!("{:?}", args);
+
+    if args.cmd_generate_mnemonic {
+        let wallet = eth::wallet::HDWallet::new(&"");
+        println!("{}", wallet.mnemonic());
+        std::process::exit(0);
+    }
 
     let mut account_store = SQLiteAccountStore::new(ACCOUNT_DB_NAME);
     let user = match account_store.load_account(&args.arg_username) {
@@ -153,6 +166,19 @@ fn main() {
     };
 
     // COMMANDS
+
+    // REFRESH KEYS
+    if args.cmd_refresh_keys {
+        let mut store = new_protocol_store!(
+            SQLiteProtocolStore::new(&get_account_db_name!(user.get_username()),
+                                     user.get_identity_keypair(),
+                                     user.get_registration_id()));
+        user.refresh_keys(&mut store, TOKEN_CHAT_SERVICE_URL)
+            .unwrap_or_else(|e| {
+                println!("ERROR: {}\n{}", e, USAGE);
+                std::process::exit(1);
+            });
+    }
 
     // REVIEW
 
@@ -239,7 +265,7 @@ fn main() {
                     println!("ERROR: User '{}' doesn't exist\n{}", args.arg_recipient, USAGE);
                     std::process::exit(1);
                 }
-        };
+            };
 
         let sofa_message = if args.cmd_message {
             format!("SOFA::Message:{{\"body\":\"{}\"}}", args.arg_message)
@@ -273,6 +299,35 @@ fn main() {
                 println!("Error sending message: {:?}", e);
             }
         };
+    }
+
+    // reset the session for a user
+    if args.cmd_reset_session {
+        let mut store = new_protocol_store!(
+            SQLiteProtocolStore::new(&get_account_db_name!(user.get_username()),
+                                     user.get_identity_keypair(),
+                                     user.get_registration_id()));
+        let mut cs = service::chat::ChatService::new(
+            &mut store,
+            TOKEN_CHAT_SERVICE_URL, &user.get_private_key(),
+            user.get_token_id(), &user.get_password());
+
+        let (token_id, _) = match service::id::IdService::new(TOKEN_ID_SERVICE_URL, &user.get_private_key())
+            .get_user_by_username(&args.arg_recipient) {
+                Ok(data) => {
+                    (eth::Address::from_string(&data["token_id"].as_str().unwrap()),
+                     eth::Address::from_string(&data["payment_address"].as_str().unwrap()))
+                },
+                Err(_) => {
+                    println!("ERROR: User '{}' doesn't exist\n{}", args.arg_recipient, USAGE);
+                    std::process::exit(1);
+                }
+            };
+
+        let address = SignalProtocolAddress::new(&token_id.to_string(), 1);
+        if store.contains_session(&address) {
+            store.delete_session(&address);
+        }
     }
 
     if args.cmd_pn_deregister {
