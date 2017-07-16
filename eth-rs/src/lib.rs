@@ -1,7 +1,7 @@
 extern crate bigint;
 extern crate rand;
 extern crate rlp;
-extern crate rustc_serialize;
+extern crate rustc_hex;
 extern crate tiny_keccak;
 extern crate secp256k1;
 #[macro_use]

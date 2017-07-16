@@ -1,5 +1,5 @@
 use rlp;
-use rustc_serialize::hex::FromHex;
+use rustc_hex::FromHex;
 use std::fmt;
 
 #[derive(Clone,PartialEq,Debug)]

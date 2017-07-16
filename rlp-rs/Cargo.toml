@@ -6,10 +6,10 @@ version = "0.2.1"
 authors = ["Parity Technologies <admin@parity.io>", "Tristan King <tristan.king@gmail.com>"]
 
 [dependencies]
-elastic-array = "0.7.0"
-bigint = { git = "https://github.com/paritytech/bigint", rev = "0ab6d5c3" }
+elastic-array = "0.9"
+bigint = { git = "https://github.com/paritytech/bigint", rev = "58fa622b" }
 lazy_static = "0.2"
-rustc-serialize = "0.3"
+rustc-hex = "1.0"
 byteorder = "1.0"
 
 [dependencies.bighash]
