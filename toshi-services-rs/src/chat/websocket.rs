@@ -20,16 +20,16 @@ use self::url::percent_encoding::{utf8_percent_encode, QUERY_ENCODE_SET};
 use signal::cipher::{IV_OFFSET, IV_LENGTH, CIPHER_KEY_SIZE,
                      CIPHERTEXT_OFFSET, MAC_SIZE, VERSION_LENGTH,
                      decrypt_cbc, verify_mac};
-use signal::message::{TokenMessage};
+use signal::message::{ToshiMessage};
 use signal::protocol::{SignalProtocolStore};
 use super::process_envelope;
 
 trait MessageHandler {
-    fn on_message(&mut self, _: TokenMessage);
+    fn on_message(&mut self, _: ToshiMessage);
 }
 
-impl<F> MessageHandler for F where F: FnMut(TokenMessage) {
-    fn on_message(&mut self, msg: TokenMessage) {
+impl<F> MessageHandler for F where F: FnMut(ToshiMessage) {
+    fn on_message(&mut self, msg: ToshiMessage) {
         self(msg)
     }
 }
@@ -59,7 +59,7 @@ impl<F> ws::Handler for WebsocketHandler<F> where F: MessageHandler {
         let mut req = try!(ws::Request::from_url(url));
         {
             let mut headers = req.headers_mut();
-            headers.push(("X-Signal-Agent".to_string(), "Token-Client-Rust".as_bytes().to_vec()));
+            headers.push(("X-Signal-Agent".to_string(), "Toshi-Client-Rust".as_bytes().to_vec()));
         }
         Ok(req)
     }
@@ -176,13 +176,13 @@ impl<F> ws::Factory for Factory<F> where F: MessageHandler {
 impl ChatService {
 
     pub fn websocket_connect<F>(&mut self, signaling_key: &[u8;52], handler: F) -> Result<(),String>
-        where F: FnMut(TokenMessage) {
+        where F: FnMut(ToshiMessage) {
 
         let password: String = {
             utf8_percent_encode(self.password.as_str(), QUERY_ENCODE_SET).collect()
         };
         let url = format!("ws{}/v1/websocket/?login={}&password={}",
-                          &self.base_url[4..], self.token_id.to_string(), password);
+                          &self.base_url[4..], self.toshi_id.to_string(), password);
         let parsed = try!(url::Url::parse(&url)
                           .map_err(|err| format!("Unable to parse {} as url due to {:?}", url, err)));
 

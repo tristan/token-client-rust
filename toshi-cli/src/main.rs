@@ -14,7 +14,7 @@ extern crate rpassword;
 extern crate eth;
 #[macro_use]
 extern crate signal;
-extern crate token_services;
+extern crate toshi_services;
 
 mod account;
 
@@ -27,11 +27,11 @@ use storage::{SQLiteAccountStore};
 
 use docopt::Docopt;
 
-// alias token_servies
-use token_services as service;
+// alias toshi_servies
+use toshi_services as service;
 use signal::protocol::{SignalProtocolStore, SignalProtocolAddress};
 use signal::sqlite_store::SQLiteProtocolStore;
-use signal::message::TokenMessage;
+use signal::message::ToshiMessage;
 
 #[derive(Debug, Deserialize)]
 struct Args {
@@ -69,39 +69,39 @@ struct Args {
 
 const USAGE: &'static str = "
 Usage:
-  token_client generate-mnemonic
-  token_client <username> create
-  token_client <username> refresh-keys
-  token_client <username> reset-session <recipient>
-  token_client <username> message <recipient> <message>
-  token_client <username> messages
-  token_client <username> info <target>
-  token_client <username> review <recipient> <rating> <message>
-  token_client <username> reprocess
-  token_client <username> websocket
-  token_client <username> pn-deregister <pn-service>
-  token_client <username> debug dump
-  token_client <username> init <recipient>
-  token_client <username> command <recipient> <value>
-  token_client <username> pay <recipient> <ether>
-  token_client <username> fakepay <recipient> <ether>
+  toshi_client generate-mnemonic
+  toshi_client <username> create
+  toshi_client <username> refresh-keys
+  toshi_client <username> reset-session <recipient>
+  toshi_client <username> message <recipient> <message>
+  toshi_client <username> messages
+  toshi_client <username> info <target>
+  toshi_client <username> review <recipient> <rating> <message>
+  toshi_client <username> reprocess
+  toshi_client <username> websocket
+  toshi_client <username> pn-deregister <pn-service>
+  toshi_client <username> debug dump
+  toshi_client <username> init <recipient>
+  toshi_client <username> command <recipient> <value>
+  toshi_client <username> pay <recipient> <ether>
+  toshi_client <username> fakepay <recipient> <ether>
 ";
 
-const TOKEN_ID_SERVICE_URL: &'static str = "https://token-id-service-development.herokuapp.com";
-const TOKEN_CHAT_SERVICE_URL: &'static str = "https://token-chat-service-development.herokuapp.com";
-const TOKEN_REPUTATION_SERVICE_URL: &'static str = "https://token-rep-service-development.herokuapp.com";
+const TOSHI_ID_SERVICE_URL: &'static str = "https://token-id-service-development.herokuapp.com";
+const TOSHI_CHAT_SERVICE_URL: &'static str = "https://token-chat-service-development.herokuapp.com";
+const TOSHI_REPUTATION_SERVICE_URL: &'static str = "https://token-rep-service-development.herokuapp.com";
 
-//const TOKEN_ID_SERVICE_URL: &'static str = "https://identity.service.tokenbrowser.com";
-//const TOKEN_CHAT_SERVICE_URL: &'static str = "https://chat.service.tokenbrowser.com";
-//const TOKEN_REPUTATION_SERVICE_URL: &'static str = "https://reputation.service.tokenbrowser.com";
+//const TOSHI_ID_SERVICE_URL: &'static str = "https://identity.service.tokenbrowser.com";
+//const TOSHI_CHAT_SERVICE_URL: &'static str = "https://chat.service.tokenbrowser.com";
+//const TOSHI_REPUTATION_SERVICE_URL: &'static str = "https://reputation.service.tokenbrowser.com";
 
-//const TOKEN_CHAT_SERVICE_URL: &'static str = "https://toshi-chat-service-staging.herokuapp.com";
+//const TOSHI_CHAT_SERVICE_URL: &'static str = "https://toshi-chat-service-staging.herokuapp.com";
 
-// const TOKEN_CHAT_SERVICE_URL: &'static str = "http://localhost:5001";
-// const TOKEN_ID_SERVICE_URL: &'static str = "http://localhost:5002";
-// const TOKEN_REPUTATION_SERVICE_URL: &'static str = "http://localhost:5004";
+// const TOSHI_CHAT_SERVICE_URL: &'static str = "http://localhost:5001";
+// const TOSHI_ID_SERVICE_URL: &'static str = "http://localhost:5002";
+// const TOSHI_REPUTATION_SERVICE_URL: &'static str = "http://localhost:5004";
 
-const ACCOUNT_DB_NAME: &'static str = "token.db";
+const ACCOUNT_DB_NAME: &'static str = "toshi.db";
 macro_rules! get_account_db_name{($username:expr) => (format!("user_{}.db", $username.as_str()))}
 
 fn main() {
@@ -143,18 +143,18 @@ fn main() {
                     SQLiteProtocolStore::new(&db_name,
                                              account.get_identity_keypair(),
                                              account.get_registration_id()));
-                account.initialize(&mut protocol_store, TOKEN_ID_SERVICE_URL, TOKEN_CHAT_SERVICE_URL)
+                account.initialize(&mut protocol_store, TOSHI_ID_SERVICE_URL, TOSHI_CHAT_SERVICE_URL)
                     .unwrap_or_else(|e| {
                         println!("ERROR: {}\n{}", e, USAGE);
                         std::process::exit(1);
                     });
-                // account.create(&mut protocol_store, TOKEN_CHAT_SERVICE_URL).unwrap_or_else(|e| {
+                // account.create(&mut protocol_store, TOSHI_CHAT_SERVICE_URL).unwrap_or_else(|e| {
                 //     println!("ERROR: {}\n{}", e, USAGE);
                 //     std::process::exit(1);
                 // });
                 account_store.store_account(&account);
 
-                println!("{}", account.get_token_id().to_string());
+                println!("{}", account.get_toshi_id().to_string());
                 println!("{}", account.get_registration_id());
                 // TODO: display account details
                 std::process::exit(0);
@@ -173,7 +173,7 @@ fn main() {
             SQLiteProtocolStore::new(&get_account_db_name!(user.get_username()),
                                      user.get_identity_keypair(),
                                      user.get_registration_id()));
-        user.refresh_keys(&mut store, TOKEN_CHAT_SERVICE_URL)
+        user.refresh_keys(&mut store, TOSHI_CHAT_SERVICE_URL)
             .unwrap_or_else(|e| {
                 println!("ERROR: {}\n{}", e, USAGE);
                 std::process::exit(1);
@@ -190,7 +190,7 @@ fn main() {
         }
 
         let repservice = service::rep::ReputationService::new(
-            TOKEN_REPUTATION_SERVICE_URL, &user.get_private_key());
+            TOSHI_REPUTATION_SERVICE_URL, &user.get_private_key());
 
         repservice.submit_review(&args.arg_recipient.as_str(),
                                  rating,
@@ -202,14 +202,14 @@ fn main() {
     if args.cmd_reprocess {
 
         let repservice = service::rep::ReputationService::new(
-            TOKEN_REPUTATION_SERVICE_URL, &user.get_private_key());
+            TOSHI_REPUTATION_SERVICE_URL, &user.get_private_key());
 
         repservice.reporcess_all_reviews().unwrap();
         println!("Reprocessing Started!");
     }
 
     if args.cmd_info {
-        match service::id::IdService::new(TOKEN_ID_SERVICE_URL, &user.get_private_key())
+        match service::id::IdService::new(TOSHI_ID_SERVICE_URL, &user.get_private_key())
             .get_user_by_username(&args.arg_target) {
                 Ok(data) => {
                     println!("{:#}", data);
@@ -227,8 +227,8 @@ fn main() {
                                      user.get_registration_id()));
         let mut cs = service::chat::ChatService::new(
             &mut store,
-            TOKEN_CHAT_SERVICE_URL, &user.get_private_key(),
-            user.get_token_id(), &user.get_password());
+            TOSHI_CHAT_SERVICE_URL, &user.get_private_key(),
+            user.get_toshi_id(), &user.get_password());
         let result = cs.get_messages();
         match result {
             Ok(messages) => {
@@ -252,13 +252,13 @@ fn main() {
                                      user.get_registration_id()));
         let mut cs = service::chat::ChatService::new(
             &mut store,
-            TOKEN_CHAT_SERVICE_URL, &user.get_private_key(),
-            user.get_token_id(), &user.get_password());
+            TOSHI_CHAT_SERVICE_URL, &user.get_private_key(),
+            user.get_toshi_id(), &user.get_password());
 
-        let (token_id, payment_address) = match service::id::IdService::new(TOKEN_ID_SERVICE_URL, &user.get_private_key())
+        let (toshi_id, payment_address) = match service::id::IdService::new(TOSHI_ID_SERVICE_URL, &user.get_private_key())
             .get_user_by_username(&args.arg_recipient) {
                 Ok(data) => {
-                    (eth::Address::from_string(&data["token_id"].as_str().unwrap()),
+                    (eth::Address::from_string(&data["toshi_id"].as_str().unwrap()),
                      eth::Address::from_string(&data["payment_address"].as_str().unwrap()))
                 },
                 Err(_) => {
@@ -285,9 +285,9 @@ fn main() {
             panic!("Unreachable!");
         };
 
-        println!("Sending '{}' to: {}", sofa_message, token_id.to_string());
+        println!("Sending '{}' to: {}", sofa_message, toshi_id.to_string());
 
-        match cs.send_message(&token_id, &sofa_message) {
+        match cs.send_message(&toshi_id, &sofa_message) {
             Ok(needs_sync) => {
                 if needs_sync {
                     println!("Needs sync!");
@@ -309,13 +309,13 @@ fn main() {
                                      user.get_registration_id()));
         let mut cs = service::chat::ChatService::new(
             &mut store,
-            TOKEN_CHAT_SERVICE_URL, &user.get_private_key(),
-            user.get_token_id(), &user.get_password());
+            TOSHI_CHAT_SERVICE_URL, &user.get_private_key(),
+            user.get_toshi_id(), &user.get_password());
 
-        let (token_id, _) = match service::id::IdService::new(TOKEN_ID_SERVICE_URL, &user.get_private_key())
+        let (toshi_id, _) = match service::id::IdService::new(TOSHI_ID_SERVICE_URL, &user.get_private_key())
             .get_user_by_username(&args.arg_recipient) {
                 Ok(data) => {
-                    (eth::Address::from_string(&data["token_id"].as_str().unwrap()),
+                    (eth::Address::from_string(&data["toshi_id"].as_str().unwrap()),
                      eth::Address::from_string(&data["payment_address"].as_str().unwrap()))
                 },
                 Err(_) => {
@@ -324,7 +324,7 @@ fn main() {
                 }
             };
 
-        let address = SignalProtocolAddress::new(&token_id.to_string(), 1);
+        let address = SignalProtocolAddress::new(&toshi_id.to_string(), 1);
         if store.contains_session(&address) {
             store.delete_session(&address);
         }
@@ -347,8 +347,8 @@ fn main() {
 
         let mut cs = service::chat::ChatService::new(
             &mut store,
-            TOKEN_CHAT_SERVICE_URL, &user.get_private_key(),
-            user.get_token_id(), &user.get_password());
+            TOSHI_CHAT_SERVICE_URL, &user.get_private_key(),
+            user.get_toshi_id(), &user.get_password());
         match cs.deregister_push_notifications(servicetype) {
             Ok(()) => { println!("OK!"); },
             Err(e) => {
@@ -358,7 +358,7 @@ fn main() {
     }
 
     if args.cmd_debug && args.cmd_dump {
-        println!("{}", user.get_token_id().to_string());
+        println!("{}", user.get_toshi_id().to_string());
         println!("{}", user.get_registration_id());
         //println!("{:?}", user.get_signaling_key());
     }
@@ -370,8 +370,8 @@ fn main() {
                                      user.get_registration_id()));
         if let Err(error) = service::chat::ChatService::new(
             &mut store,
-            TOKEN_CHAT_SERVICE_URL, &user.get_private_key(),
-            user.get_token_id(), &user.get_password()).websocket_connect(
+            TOSHI_CHAT_SERVICE_URL, &user.get_private_key(),
+            user.get_toshi_id(), &user.get_password()).websocket_connect(
             user.get_signaling_key(),
             |msg| {
                 println!("{}", msg);

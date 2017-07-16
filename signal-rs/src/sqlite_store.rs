@@ -307,8 +307,8 @@ mod tests {
     fn test_sqlite_store() {
 
         // try remove the test file if it already exists
-        remove_file("/tmp/token-rust-test-store.db").unwrap_or(());
-        let mut idstore = SQLiteProtocolStore::new("/tmp/token-rust-test-store.db", &IdentityKeyPair::generate(), 0);
+        remove_file("/tmp/toshi-rust-test-store.db").unwrap_or(());
+        let mut idstore = SQLiteProtocolStore::new("/tmp/toshi-rust-test-store.db", &IdentityKeyPair::generate(), 0);
 
         let kp = IdentityKeyPair::generate();
         let kp2 = IdentityKeyPair::generate();
@@ -325,7 +325,7 @@ mod tests {
         idstore.store_identity(&addr, &kp.get_public_key());
 
         // clean up when done
-        remove_file("/tmp/token-rust-test-store.db").unwrap_or(());
+        remove_file("/tmp/toshi-rust-test-store.db").unwrap_or(());
     }
 
 }

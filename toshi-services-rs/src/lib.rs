@@ -135,9 +135,9 @@ fn signed_request(signing_key: &SecretKey, method: Method, base_url: &str, path:
     let sig = signing_key.sign(data.as_bytes());
 
     // println!("Singing key: 0x{:x}", signing_key);
-    // println!("Token-Signature: 0x{:x}", sig);
-    // println!("Token-Timestamp: {}", timespec.sec);
-    // println!("Token-ID-Address: 0x{:x}", signing_key.address());
+    // println!("Toshi-Signature: 0x{:x}", sig);
+    // println!("Toshi-Timestamp: {}", timespec.sec);
+    // println!("Toshi-ID-Address: 0x{:x}", signing_key.address());
     // println!("URL: {}{}", base_url, path);
     // println!("data: {}", data);
 
@@ -147,9 +147,9 @@ fn signed_request(signing_key: &SecretKey, method: Method, base_url: &str, path:
         None => List::new()
     };
     let address = signing_key.address().to_string();
-    list.append(format!("Token-Timestamp: {}", timespec.sec).as_str()).unwrap();
-    list.append(format!("Token-Signature: 0x{:x}", sig).as_str()).unwrap();
-    list.append(format!("Token-ID-Address: {}", address).as_str()).unwrap();
+    list.append(format!("Toshi-Timestamp: {}", timespec.sec).as_str()).unwrap();
+    list.append(format!("Toshi-Signature: 0x{:x}", sig).as_str()).unwrap();
+    list.append(format!("Toshi-ID-Address: {}", address).as_str()).unwrap();
 
     do_request(method, base_url, path, list, body)
 

@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package token;
+package toshi;
 
 message Account {
   required string username = 1;

@@ -7,13 +7,13 @@ use json::JsonValue;
 use signal::SignalService;
 use rustc_serialize::base64::{ToBase64, STANDARD};
 use curl::easy::{List};
-use signal::message::{PreKeySignalMessage,SignalMessage,DataMessage,TokenMessage};
+use signal::message::{PreKeySignalMessage,SignalMessage,DataMessage,ToshiMessage};
 
 pub struct ChatService {
     store: SignalProtocolStore,
     base_url: String,
     signing_key: SecretKey,
-    token_id: Address,
+    toshi_id: Address,
     password: String
 }
 
@@ -21,21 +21,21 @@ pub struct ChatService {
 pub enum PushServiceType { APN, GCM }
 
 impl ChatService {
-    pub fn new(store: &SignalProtocolStore, base_url: &str, signing_key: &SecretKey, token_id: &Address, password: &str) -> ChatService {
+    pub fn new(store: &SignalProtocolStore, base_url: &str, signing_key: &SecretKey, toshi_id: &Address, password: &str) -> ChatService {
         ChatService {
             store: store.clone(),
             base_url: base_url.to_string(),
             signing_key: signing_key.clone(),
-            token_id: token_id.clone(),
+            toshi_id: toshi_id.clone(),
             password: password.to_string()
         }
     }
 
     fn get_base_headers(&self) -> List {
-        let auth = format!("Authorization: Basic {}", format!("{}.1:{}", self.token_id.to_string(), self.password).as_bytes().to_base64(STANDARD));
+        let auth = format!("Authorization: Basic {}", format!("{}.1:{}", self.toshi_id.to_string(), self.password).as_bytes().to_base64(STANDARD));
         let mut headers = List::new();
         headers.append(auth.as_str()).unwrap();
-        headers.append("X-Signal-Agent: Token-Client-Rust").unwrap();
+        headers.append("X-Signal-Agent: Toshi-Client-Rust").unwrap();
         headers
     }
 
@@ -167,7 +167,7 @@ fn strip_message_body_padding(version: u32, padded_message: &[u8]) -> Vec<u8> {
 }
 
 pub fn process_envelope(store: &mut SignalProtocolStore, envelope: &SignalService::Envelope)
-                        -> Result<(SignalProtocolAddress,i64,Option<TokenMessage>), String> {
+                        -> Result<(SignalProtocolAddress,i64,Option<ToshiMessage>), String> {
     let env_type = envelope.get_field_type() as u32;
     let remote_address = SignalProtocolAddress::new(
         envelope.get_source(),
@@ -248,7 +248,7 @@ pub fn process_envelope(store: &mut SignalProtocolStore, envelope: &SignalServic
         return Err(format!("Reached unexpected branch"));
     };
 
-    let tm = TokenMessage::new(&remote_address.get_address(),
+    let tm = ToshiMessage::new(&remote_address.get_address(),
                                &dm.get_body(),
                                timestamp);
     Ok((remote_address, timestamp, Some(tm)))

@@ -1,6 +1,6 @@
 use super::ChatService;
 use super::{request,signed_request,Method,process_envelope};
-use signal::message::{TokenMessage};
+use signal::message::{ToshiMessage};
 use signal::SignalService;
 use rustc_serialize::base64::{FromBase64};
 use std::str;
@@ -29,7 +29,7 @@ fn envelope_from_json(json: &json::JsonValue) -> SignalService::Envelope {
 
 impl ChatService {
 
-    pub fn get_messages(&mut self) -> Result<LinkedList<TokenMessage>, String> {
+    pub fn get_messages(&mut self) -> Result<LinkedList<ToshiMessage>, String> {
         let response = signed_request(&self.signing_key,
                                       Method::GET,
                                       self.base_url.as_str(),
@@ -37,7 +37,7 @@ impl ChatService {
                                       Some(self.get_base_headers()),
                                       None)?.unwrap();
         //println!("{:#}", response);
-        let mut messages: LinkedList<TokenMessage> = LinkedList::new();
+        let mut messages: LinkedList<ToshiMessage> = LinkedList::new();
         for envelope in response["messages"].members() {
 
             // build envelope from json data

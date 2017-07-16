@@ -3,16 +3,16 @@ use rand::{OsRng, Rng};
 use signal::keys::IdentityKeyPair;
 use signal::protocol::{SignalProtocolStore};
 use signal::state::{PreKeyRecord,SignedPreKeyRecord};
-use token_services as service;
+use toshi_services as service;
 
-mod_path! TokenAccount (concat!(env!("OUT_DIR"), "/TokenAccount.rs"));
+mod_path! ToshiAccount (concat!(env!("OUT_DIR"), "/ToshiAccount.rs"));
 
 use protobuf::Message;
 
 pub struct Account {
     username: String,
     private_key: eth::SecretKey,
-    token_id: eth::Address,
+    toshi_id: eth::Address,
 
     // signal specific
     registration_id: u32,
@@ -34,7 +34,7 @@ impl Account {
 
         let mut rng = OsRng::new().ok().unwrap();
 
-        // generate token_id
+        // generate toshi_id
         let private_key = eth::SecretKey::new();
 
         // signal details
@@ -52,7 +52,7 @@ impl Account {
 
         Account {
             username: username.to_string(),
-            token_id: private_key.address(),
+            toshi_id: private_key.address(),
             private_key: private_key,
 
             registration_id: registration_id,
@@ -66,7 +66,7 @@ impl Account {
     pub fn initialize(&self, store: &mut SignalProtocolStore, id_service_url: &str, chat_service_url: &str) -> Result<(), String> {
 
         match service::id::IdService::new(id_service_url, &self.private_key)
-            .create_user(&self.username, &self.token_id) {
+            .create_user(&self.username, &self.toshi_id) {
                 Ok(_) => {},
                 Err(e) => {
                     return Err(format!("Unable to create user: {:?}", e));
@@ -80,7 +80,7 @@ impl Account {
         let signed_prekey_record = SignedPreKeyRecord::generate(0, &self.identity_keypair);
         match service::chat::ChatService::new(
             store, chat_service_url,
-            &self.private_key, &self.token_id, &self.password)
+            &self.private_key, &self.toshi_id, &self.password)
             .bootstrap_account(&self.identity_keypair,
                                &last_resort_key,
                                &prekeys,
@@ -105,7 +105,7 @@ impl Account {
     pub fn create(&self, store: &mut SignalProtocolStore, chat_service_url: &str) -> Result<(), String> {
         match service::chat::ChatService::new(
             store, chat_service_url,
-            &self.private_key, &self.token_id, &self.password)
+            &self.private_key, &self.toshi_id, &self.password)
             .create_account(self.registration_id, &self.signaling_key) {
                 Ok(_) => {},
                 Err(e) => {
@@ -123,7 +123,7 @@ impl Account {
         let signed_prekey_record = SignedPreKeyRecord::generate(0, &self.identity_keypair);
         match service::chat::ChatService::new(
             store, chat_service_url,
-            &self.private_key, &self.token_id, &self.password)
+            &self.private_key, &self.toshi_id, &self.password)
             .bootstrap_account(&self.identity_keypair,
                                &last_resort_key,
                                &prekeys,
@@ -161,8 +161,8 @@ impl Account {
         &self.private_key
     }
 
-    pub fn get_token_id(&self) -> &eth::Address {
-        &self.token_id
+    pub fn get_toshi_id(&self) -> &eth::Address {
+        &self.toshi_id
     }
 
     pub fn get_password(&self) -> &String {
@@ -174,7 +174,7 @@ impl Account {
     }
 
     pub fn serialize(&self) -> Vec<u8> {
-        let mut buf = TokenAccount::Account::new();
+        let mut buf = ToshiAccount::Account::new();
         buf.set_username(self.username.clone());
         buf.set_private_key(self.private_key.serialize());
         buf.set_registration_id(self.registration_id);
@@ -186,14 +186,14 @@ impl Account {
     }
 
     pub fn deserialize(serialized: &Vec<u8>) -> Account {
-        let mut buf = TokenAccount::Account::new();
+        let mut buf = ToshiAccount::Account::new();
         buf.merge_from_bytes(serialized).unwrap();
         let pk = eth::SecretKey::deserialize(&buf.take_private_key());
         let mut signaling_key = [0u8; 52];
         signaling_key.copy_from_slice(buf.get_signaling_key());
         Account {
             username: buf.take_username(),
-            token_id: pk.address(),
+            toshi_id: pk.address(),
             private_key: pk,
 
             registration_id: buf.get_registration_id(),

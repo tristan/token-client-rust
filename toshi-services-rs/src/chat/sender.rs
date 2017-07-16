@@ -30,7 +30,7 @@ impl ChatService {
         let timestamp = message.get_timestamp();
         let message = message.serialize();
 
-        if &self.token_id != to {
+        if &self.toshi_id != to {
             let msg = self.get_encrypted_message(to, DEFAULT_DEVICE_ID, &message)?;
             messages.push_back(msg);
         }
@@ -264,11 +264,11 @@ mod tests {
     #[test]
     fn test_get_encrypted_message() {
 
-        let alice_token_id = eth::Address::from_string("0x946377c114849aaa1b08deae139d481df6974519");
-        let bob_token_id = eth::Address::from_string("0x6ae8cd08d623d34bddbeea4ea29131b4bc7b11f5");
+        let alice_toshi_id = eth::Address::from_string("0x946377c114849aaa1b08deae139d481df6974519");
+        let bob_toshi_id = eth::Address::from_string("0x6ae8cd08d623d34bddbeea4ea29131b4bc7b11f5");
 
-        //let alice_address = SignalProtocolAddress::new(alice_token_id.to_string(), 1);
-        let bob_address = SignalProtocolAddress::new(&bob_token_id.to_string(), 1);
+        //let alice_address = SignalProtocolAddress::new(alice_toshi_id.to_string(), 1);
+        let bob_address = SignalProtocolAddress::new(&bob_toshi_id.to_string(), 1);
 
         let alice_identity_keypair = IdentityKeyPair::deserialize(&vec![
             0x0a, 0x21, 0x05, 0x1e, 0x3d, 0xda, 0x2a, 0x49, 0x35, 0x21, 0xa0, 0x60, 0x3a, 0x34, 0x25, 0x99,
@@ -306,12 +306,12 @@ mod tests {
 
         let alice_secret_key = eth::generate_secret_key();
         let mut cs = ChatService::new(&alice_store, "...", &alice_secret_key,
-                                      &alice_token_id, &"test");
+                                      &alice_toshi_id, &"test");
 
         let message = DataMessage::with_body_and_timestamp(&"hello", 1490363529623);
         let message = message.serialize();
 
-        let enc = cs.get_encrypted_message(&bob_token_id, 1, &message).unwrap();
+        let enc = cs.get_encrypted_message(&bob_toshi_id, 1, &message).unwrap();
 
         let expected_body = "MyjCtQEIwv72BDCMrrQBEiEFcGoB6nJ8s5f34hi4ow8+N1Y/OBCjM7jQ677yhZqYQSQaIQUePdoqSTUhoGA6NCWZPeCMiIZZahaF6Kq9/VLq7DAQMSLTATMKIQUzL1RSKaGoNadwn0uyKEFrV1kSju7gfL3a3slJbn4sGBAAGAAioAFnjszPBgWNcDcLf8TyLHnhTB0L5m629jPUlDG4WTJfnXPiTSxb/5465QsqA+7R1JshMEcD/urVxdsVJXKLZ2w2gnaKyPvNvKpMRULAhkVFXDejbxPamUE6uNzlCsu96s6TsAPh9IEloAc6bFOZpUEX/cj1ePdBywLigmovk0TqIkV+PbnX3ifNllrgx2idSK5/oyf5Xq3PQfhKfqX9TzMhURMgeXtb4j8=";
 

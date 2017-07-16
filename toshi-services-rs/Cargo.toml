@@ -1,5 +1,5 @@
 [package]
-name = "token-services"
+name = "toshi-services"
 version = "0.1.0"
 authors = ["Tristan King <tristan.king@gmail.com>"]
 build = "build.rs"

@@ -10,5 +10,5 @@ fn main() {
 
     let mut compiler = protobuf_build::Compiler::new(&source, &out);
 
-    compiler.compile("TokenAccount.proto").unwrap();
+    compiler.compile("ToshiAccount.proto").unwrap();
 }

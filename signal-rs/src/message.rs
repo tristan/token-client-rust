@@ -369,15 +369,15 @@ impl DataMessage {
     }
 }
 
-pub struct TokenMessage {
+pub struct ToshiMessage {
     sender: String,
     message: String,
     timestamp: i64
 }
 
-impl TokenMessage {
-    pub fn new(sender: &str, message: &str, timestamp: i64) -> TokenMessage {
-        TokenMessage {
+impl ToshiMessage {
+    pub fn new(sender: &str, message: &str, timestamp: i64) -> ToshiMessage {
+        ToshiMessage {
             sender: sender.to_string(),
             message: message.to_string(),
             timestamp: timestamp
@@ -385,7 +385,7 @@ impl TokenMessage {
     }
 }
 
-impl fmt::Display for TokenMessage {
+impl fmt::Display for ToshiMessage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}@{}: {}", self.sender, self.timestamp, self.message)
     }
